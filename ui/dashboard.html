@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PEMFC BMS Diagnosis Dashboard</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --ink: #17202a;
+      --muted: #64717f;
+      --line: #d9e0e7;
+      --blue: #2563eb;
+      --teal: #0f9f8f;
+      --amber: #b7791f;
+      --red: #c2410c;
+      --green: #15803d;
+      --shadow: 0 10px 28px rgba(23, 32, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      letter-spacing: 0;
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+    }
+
+    aside {
+      background: #111827;
+      color: #edf2f7;
+      padding: 22px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .brand {
+      display: grid;
+      gap: 4px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 750;
+    }
+
+    .brand span {
+      color: #aeb8c4;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .control-group {
+      display: grid;
+      gap: 8px;
+    }
+
+    label {
+      color: #cbd5e1;
+      font-size: 12px;
+      font-weight: 650;
+      text-transform: uppercase;
+    }
+
+    select,
+    input[type="range"] {
+      width: 100%;
+    }
+
+    select {
+      appearance: none;
+      background: #1f2937;
+      border: 1px solid #334155;
+      color: #f8fafc;
+      border-radius: 6px;
+      padding: 11px 12px;
+      font-size: 14px;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 6px;
+      padding: 10px 12px;
+      background: #e5e7eb;
+      color: #111827;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: var(--blue);
+      color: white;
+    }
+
+    button:focus,
+    select:focus,
+    input:focus {
+      outline: 2px solid #93c5fd;
+      outline-offset: 2px;
+    }
+
+    .legend {
+      margin-top: auto;
+      display: grid;
+      gap: 8px;
+      color: #cbd5e1;
+      font-size: 13px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    .dot.warning { background: var(--amber); }
+    .dot.check { background: #7c3aed; }
+    .dot.critical { background: var(--red); }
+
+    main {
+      padding: 22px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 16px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .title h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .title p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .status-pill {
+      min-width: 130px;
+      text-align: center;
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: white;
+      font-size: 16px;
+      font-weight: 800;
+      background: var(--green);
+      box-shadow: var(--shadow);
+    }
+
+    .status-pill.Warning { background: var(--amber); }
+    .status-pill.Check { background: #7c3aed; }
+    .status-pill.Critical { background: var(--red); }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+      min-height: 88px;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 22px;
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      grid-auto-rows: minmax(230px, 1fr);
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .chart-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 240px;
+    }
+
+    .chart-panel h3 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      color: #263442;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      min-height: 180px;
+    }
+
+    .timeline {
+      height: 10px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      overflow: hidden;
+      border: 1px solid #d2dae5;
+    }
+
+    .timeline-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--teal), var(--blue));
+    }
+
+    @media (max-width: 980px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      aside {
+        position: static;
+      }
+
+      .metrics,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="brand">
+        <h1>PEMFC BMS Diagnosis</h1>
+        <span>Live playback view for voltage, SOH proxy, residual, and operating data.</span>
+      </div>
+
+      <div class="control-group">
+        <label for="dataset">Dataset</label>
+        <select id="dataset"></select>
+      </div>
+
+      <div class="control-group">
+        <label for="speed">Playback speed</label>
+        <input id="speed" type="range" min="1" max="80" value="24">
+      </div>
+
+      <div class="buttons">
+        <button id="play" class="primary">Pause</button>
+        <button id="reset">Reset</button>
+      </div>
+
+      <div class="control-group">
+        <label>Progress</label>
+        <div class="timeline"><div id="timelineFill" class="timeline-fill"></div></div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-row"><span class="dot"></span> Normal</div>
+        <div class="legend-row"><span class="dot warning"></span> Warning</div>
+        <div class="legend-row"><span class="dot check"></span> Check</div>
+        <div class="legend-row"><span class="dot critical"></span> Critical</div>
+      </div>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <div class="title">
+          <h2 id="datasetTitle">Dashboard</h2>
+          <p id="subtitle">Waiting for dashboard data.</p>
+        </div>
+        <div id="statePill" class="status-pill">Normal</div>
+      </div>
+
+      <section class="metrics">
+        <div class="metric"><span>Operating Time</span><strong id="timeMetric">0.0 h</strong></div>
+        <div class="metric"><span>Stack Voltage</span><strong id="voltageMetric">0.000 V</strong></div>
+        <div class="metric"><span>SOH Proxy</span><strong id="sohMetric">0.00%</strong></div>
+        <div class="metric"><span>Residual Z</span><strong id="zMetric">0.00</strong></div>
+        <div class="metric"><span>Power</span><strong id="powerMetric">0.0 W</strong></div>
+      </section>
+
+      <section class="grid">
+        <div class="chart-panel">
+          <h3>Voltage and Normal Baseline</h3>
+          <canvas id="voltageChart"></canvas>
+        </div>
+        <div class="chart-panel">
+          <h3>SOH Proxy</h3>
+          <canvas id="sohChart"></canvas>
+        </div>
+        <div class="chart-panel">
+          <h3>Residual Z-score</h3>
+          <canvas id="zChart"></canvas>
+        </div>
+        <div class="chart-panel">
+          <h3>Current and Temperature</h3>
+          <canvas id="opsChart"></canvas>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      payload: null,
+      dataset: null,
+      index: 0,
+      playing: true,
+      lastTick: 0
+    };
+    const query = new URLSearchParams(window.location.search);
+    const queryDataset = query.get("dataset");
+    const queryFrame = query.get("frame");
+    const queryAutoplay = query.get("autoplay");
+
+    const els = {
+      dataset: document.getElementById("dataset"),
+      speed: document.getElementById("speed"),
+      play: document.getElementById("play"),
+      reset: document.getElementById("reset"),
+      title: document.getElementById("datasetTitle"),
+      subtitle: document.getElementById("subtitle"),
+      pill: document.getElementById("statePill"),
+      fill: document.getElementById("timelineFill"),
+      time: document.getElementById("timeMetric"),
+      voltage: document.getElementById("voltageMetric"),
+      soh: document.getElementById("sohMetric"),
+      z: document.getElementById("zMetric"),
+      power: document.getElementById("powerMetric")
+    };
+
+    const charts = [
+      { canvas: document.getElementById("voltageChart"), fields: ["voltage_v_smooth", "voltage_hat_v"], colors: ["#2563eb", "#0f9f8f"], units: "V" },
+      { canvas: document.getElementById("sohChart"), fields: ["soh_proxy_pct"], colors: ["#15803d"], units: "%" },
+      { canvas: document.getElementById("zChart"), fields: ["residual_z_score"], colors: ["#c2410c"], units: "" },
+      { canvas: document.getElementById("opsChart"), fields: ["current_a_smooth", "temperature_c_smooth"], colors: ["#7c3aed", "#b7791f"], units: "" }
+    ];
+
+    fetch("dashboard_data.json")
+      .then(response => response.json())
+      .then(payload => {
+        state.payload = payload;
+        for (const dataset of payload.datasets) {
+          const option = document.createElement("option");
+          option.value = dataset.id;
+          option.textContent = dataset.label;
+          els.dataset.appendChild(option);
+        }
+        const initialDataset = payload.datasets.some(item => item.id === queryDataset)
+          ? queryDataset
+          : payload.datasets[0].id;
+        if (queryAutoplay === "0" || queryFrame !== null) {
+          state.playing = false;
+          els.play.textContent = "Play";
+          els.play.classList.remove("primary");
+        }
+        setDataset(initialDataset);
+        requestAnimationFrame(loop);
+      })
+      .catch(error => {
+        els.subtitle.textContent = "dashboard_data.json could not be loaded. Run python -m src.export_dashboard_data first.";
+        console.error(error);
+      });
+
+    els.dataset.addEventListener("change", event => setDataset(event.target.value));
+    els.play.addEventListener("click", () => {
+      state.playing = !state.playing;
+      els.play.textContent = state.playing ? "Pause" : "Play";
+      els.play.classList.toggle("primary", state.playing);
+    });
+    els.reset.addEventListener("click", () => {
+      state.index = 0;
+      render();
+    });
+
+    function setDataset(id) {
+      state.dataset = state.payload.datasets.find(item => item.id === id);
+      state.index = 0;
+      els.title.textContent = state.dataset.label;
+      const points = state.dataset.points.length;
+      const summary = state.dataset.summary || {};
+      els.subtitle.textContent = `${points} playback points | Final state ${summary.state || "N/A"} | Final SOH ${summary.soh || "N/A"}`;
+      if (queryFrame !== null) {
+        const framePct = Math.max(0, Math.min(1, Number(queryFrame)));
+        state.index = Math.round(framePct * (state.dataset.points.length - 1));
+      }
+      render();
+    }
+
+    function loop(timestamp) {
+      const interval = Math.max(20, 900 / Number(els.speed.value));
+      if (state.playing && timestamp - state.lastTick >= interval) {
+        state.lastTick = timestamp;
+        state.index = Math.min(state.index + 1, state.dataset.points.length - 1);
+        if (state.index === state.dataset.points.length - 1) {
+          state.playing = false;
+          els.play.textContent = "Play";
+          els.play.classList.remove("primary");
+        }
+        render();
+      }
+      requestAnimationFrame(loop);
+    }
+
+    function render() {
+      if (!state.dataset) return;
+      const points = state.dataset.points;
+      const point = points[state.index];
+      const pct = points.length > 1 ? state.index / (points.length - 1) * 100 : 0;
+
+      els.fill.style.width = `${pct}%`;
+      els.pill.textContent = point.state;
+      els.pill.className = `status-pill ${point.state}`;
+      els.time.textContent = `${format(point.time_h, 1)} h`;
+      els.voltage.textContent = `${format(point.voltage_v_smooth, 3)} V`;
+      els.soh.textContent = `${format(point.soh_proxy_pct, 2)}%`;
+      els.z.textContent = `${format(point.residual_z_score, 2)}`;
+      els.power.textContent = `${format(point.power_w, 1)} W`;
+
+      for (const chart of charts) {
+        drawChart(chart, points.slice(0, state.index + 1));
+      }
+    }
+
+    function drawChart(chart, visiblePoints) {
+      const canvas = chart.canvas;
+      const ctx = canvas.getContext("2d");
+      const ratio = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.max(300, Math.floor(rect.width * ratio));
+      canvas.height = Math.max(180, Math.floor(rect.height * ratio));
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+      const width = rect.width;
+      const height = rect.height;
+      const pad = { left: 46, right: 16, top: 18, bottom: 30 };
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+
+      if (visiblePoints.length < 2) return;
+      const xValues = visiblePoints.map(point => point.time_h);
+      const yValues = [];
+      for (const field of chart.fields) {
+        for (const point of visiblePoints) yValues.push(point[field]);
+      }
+      const xMin = Math.min(...xValues);
+      const xMax = Math.max(...xValues);
+      const yMinRaw = Math.min(...yValues);
+      const yMaxRaw = Math.max(...yValues);
+      const yPad = (yMaxRaw - yMinRaw || Math.abs(yMaxRaw) || 1) * 0.12;
+      const yMin = yMinRaw - yPad;
+      const yMax = yMaxRaw + yPad;
+
+      drawAxes(ctx, width, height, pad, xMin, xMax, yMin, yMax);
+      chart.fields.forEach((field, index) => {
+        drawSeries(ctx, visiblePoints, field, chart.colors[index], width, height, pad, xMin, xMax, yMin, yMax);
+      });
+    }
+
+    function drawAxes(ctx, width, height, pad, xMin, xMax, yMin, yMax) {
+      ctx.strokeStyle = "#d9e0e7";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, pad.top);
+      ctx.lineTo(pad.left, height - pad.bottom);
+      ctx.lineTo(width - pad.right, height - pad.bottom);
+      ctx.stroke();
+
+      ctx.fillStyle = "#64717f";
+      ctx.font = "11px Segoe UI, Arial";
+      ctx.fillText(format(yMax, 2), 6, pad.top + 8);
+      ctx.fillText(format(yMin, 2), 6, height - pad.bottom);
+      ctx.fillText(`${format(xMin, 0)} h`, pad.left, height - 9);
+      ctx.fillText(`${format(xMax, 0)} h`, width - pad.right - 50, height - 9);
+    }
+
+    function drawSeries(ctx, points, field, color, width, height, pad, xMin, xMax, yMin, yMax) {
+      const plotW = width - pad.left - pad.right;
+      const plotH = height - pad.top - pad.bottom;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      points.forEach((point, index) => {
+        const x = pad.left + ((point.time_h - xMin) / (xMax - xMin || 1)) * plotW;
+        const y = pad.top + (1 - ((point[field] - yMin) / (yMax - yMin || 1))) * plotH;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    function format(value, digits) {
+      return Number(value).toLocaleString(undefined, {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits
+      });
+    }
+  </script>
+</body>
+</html>
