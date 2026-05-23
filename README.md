@@ -192,14 +192,20 @@ The residual z-score is kept as a reference indicator, not as the main state
 decision rule. It is useful for seeing baseline deviation, but it can be too
 sensitive when the empirical baseline is imperfect.
 
+The dashboard uses a simpler baseline-gap rule:
+
+```text
+baseline_gap_pct = (V_stack - V_hat_normal) / V_hat_normal * 100
+```
+
 ## State Logic
 
 | State | Example condition | Meaning | Response |
 | --- | --- | --- | --- |
-| Normal | `SOH_proxy >= 97%` | Similar to initial corrected-voltage reference | Continue monitoring |
-| Warning | `95% <= SOH_proxy < 97%` | Voltage decline signal starts | Strengthen trend monitoring |
-| Check | `90% <= SOH_proxy < 95%` | Meaningful performance decline | Check cooling/load/operating conditions |
-| Critical | `SOH_proxy < 90%` or rapid corrected-voltage drop | Operation restriction may be needed | Detailed inspection and operation review |
+| Normal | `SOH_proxy >= 97%` and `baseline_gap_pct > -2%` | Similar to initial corrected-voltage reference and baseline | Continue monitoring |
+| Warning | `95% <= SOH_proxy < 97%` or `baseline_gap_pct <= -2%` | Voltage decline signal starts | Strengthen trend monitoring |
+| Check | `90% <= SOH_proxy < 95%` or `baseline_gap_pct <= -5%` | Meaningful performance decline | Check cooling/load/operating conditions |
+| Critical | `SOH_proxy < 90%`, `baseline_gap_pct <= -10%`, or rapid corrected-voltage drop | Operation restriction may be needed | Detailed inspection and operation review |
 
 Thresholds are temporary MVP defaults. Real deployment should recalibrate them using stack manufacturer criteria and operating data.
 

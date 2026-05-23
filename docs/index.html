@@ -49,9 +49,7 @@
       box-shadow: 0 12px 28px rgba(23, 32, 42, 0.08);
     }
 
-    a.card:hover {
-      border-color: #2563eb;
-    }
+    a.card:hover { border-color: #2563eb; }
 
     h2 {
       margin: 0 0 8px;
@@ -72,9 +70,7 @@
     }
 
     @media (max-width: 760px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
+      .grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -82,7 +78,8 @@
   <main>
     <h1>PEMFC BMS Early Anomaly Detection MVP</h1>
     <p class="lead">
-      BMS 수준의 전압, 전류, 온도, 운전시간 데이터로 PEMFC 스택의 조기 이상감지와 잔여수명 추정을 수행하는 MVP 데모입니다.
+      BMS 수준의 전압, 전류, 온도, 운전시간 데이터로 PEMFC 스택의 조기 이상감지를 수행하는 MVP 데모입니다.
+      화면은 baseline 차이와 90% 전압 기준을 중심으로 판단 근거를 보여줍니다.
     </p>
 
     <div class="grid">
@@ -92,7 +89,7 @@
       </a>
       <a class="card" href="./explanation_report.html">
         <h2>Calculation Report</h2>
-        <p>각 지표의 의미와 계산식을 쉽게 설명한 HTML 보고서입니다.</p>
+        <p>각 지표의 의미와 계산식을 설명한 HTML 보고서입니다.</p>
       </a>
       <a class="card" href="./pemfc_bms_diagnosis_easy_explanation.pdf">
         <h2>PDF Report</h2>
@@ -105,7 +102,7 @@
     </div>
 
     <div class="note">
-      이 프로젝트는 정밀 전기화학 고장진단기가 아니라, BMS 데이터 기반 조기 이상감지 및 유지보수 보조 시스템입니다.
+      본 프로젝트는 정밀 전기화학 고장진단기가 아니라, BMS 데이터 기반 조기 이상감지 및 유지보수 보조 시스템입니다.
     </div>
   </main>
 </body>

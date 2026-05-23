@@ -60,6 +60,7 @@ def _compact_points(df: pd.DataFrame, max_points: int) -> list[dict[str, float |
         "power_w",
         "voltage_hat_v",
         "voltage_residual_v",
+        "baseline_gap_pct",
         "residual_z_score",
         "corrected_voltage_v",
         "corrected_voltage_delta_v",
@@ -68,6 +69,8 @@ def _compact_points(df: pd.DataFrame, max_points: int) -> list[dict[str, float |
     ]
     if "soh_proxy_raw_pct" not in df.columns:
         df["soh_proxy_raw_pct"] = df["soh_proxy_pct"]
+    if "baseline_gap_pct" not in df.columns:
+        df["baseline_gap_pct"] = df["voltage_residual_v"] / df["voltage_hat_v"] * 100.0
     if "corrected_voltage_delta_v" not in df.columns:
         df["corrected_voltage_delta_v"] = df["corrected_voltage_v"].diff()
     df["corrected_voltage_delta_v"] = df["corrected_voltage_delta_v"].fillna(0.0)
@@ -76,6 +79,7 @@ def _compact_points(df: pd.DataFrame, max_points: int) -> list[dict[str, float |
         point = {col: round(float(value), 6) for col, value in zip(cols, row)}
         point["state"] = _classify_point(
             point["soh_proxy_pct"],
+            point["baseline_gap_pct"],
             point["residual_z_score"],
             point["corrected_voltage_delta_v"],
         )
@@ -85,16 +89,17 @@ def _compact_points(df: pd.DataFrame, max_points: int) -> list[dict[str, float |
 
 def _classify_point(
     soh_proxy_pct: float,
+    baseline_gap_pct: float,
     residual_z_score: float,
     corrected_voltage_delta_v: float,
 ) -> str:
     _ = residual_z_score
     rapid_drop = corrected_voltage_delta_v < -0.5
-    if soh_proxy_pct < 90 or rapid_drop:
+    if soh_proxy_pct < 90 or baseline_gap_pct <= -10 or rapid_drop:
         return "Critical"
-    if soh_proxy_pct < 95:
+    if soh_proxy_pct < 95 or baseline_gap_pct <= -5:
         return "Check"
-    if soh_proxy_pct < 97:
+    if soh_proxy_pct < 97 or baseline_gap_pct <= -2:
         return "Warning"
     return "Normal"
 
@@ -106,6 +111,7 @@ def _parse_report(path: Path) -> dict[str, str]:
     wanted = {
         "state": r"Current State:\s*(.+)",
         "soh": r"SOH proxy:\s*(.+)",
+        "baseline_gap": r"Baseline voltage gap:\s*(.+)",
         "z": r"(?:Baseline deviation z-score|Voltage residual z-score):\s*(.+)",
         "degradation": r"Degradation speed:\s*(.+)",
         "rul": r"Estimated RUL:\s*(.+)",

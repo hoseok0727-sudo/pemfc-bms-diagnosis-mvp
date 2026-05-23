@@ -14,6 +14,8 @@ class DiagnosisSummary:
     state: str
     soh_proxy_pct: float
     residual_z_score: float
+    baseline_gap_v: float
+    baseline_gap_pct: float
     degradation_rate_v_per_h: float
     degradation_speed_v_per_h: float
     estimated_rul_h: float | None
@@ -38,6 +40,11 @@ def calculate_diagnosis_features(
     out["power_w"] = out["voltage_v_smooth"] * out["current_a_smooth"]
     out["voltage_hat_v"] = model.predict(out)
     out["voltage_residual_v"] = out["voltage_v_smooth"] - out["voltage_hat_v"]
+    out["baseline_gap_pct"] = np.where(
+        np.abs(out["voltage_hat_v"]) > 1e-9,
+        out["voltage_residual_v"] / out["voltage_hat_v"] * 100.0,
+        0.0,
+    )
     out["residual_z_score"] = (
         out["voltage_residual_v"] - model.residual_mean_
     ) / model.residual_std_
@@ -89,17 +96,20 @@ def classify_state(
     soh_proxy_pct: float,
     residual_z_score: float,
     degradation_speed_v_per_h: float,
+    baseline_gap_pct: float = 0.0,
     rapid_drop_detected: bool = False,
 ) -> str:
-    # The MVP status is driven by the voltage-based SOH proxy and rapid-drop
-    # rule. The residual z-score is kept as a reference indicator because it can
-    # be overly sensitive when the empirical baseline is imperfect.
+    # The MVP status is driven by two visible rules:
+    # 1) measured voltage below the learned baseline, and
+    # 2) corrected-voltage SOH below the 90% EOL threshold.
+    # The z-score remains a reference indicator because it can be overly
+    # sensitive when the empirical baseline is imperfect.
     _ = residual_z_score, degradation_speed_v_per_h
-    if soh_proxy_pct < 90 or rapid_drop_detected:
+    if soh_proxy_pct < 90 or baseline_gap_pct <= -10 or rapid_drop_detected:
         return "Critical"
-    if soh_proxy_pct < 95:
+    if soh_proxy_pct < 95 or baseline_gap_pct <= -5:
         return "Check"
-    if soh_proxy_pct < 97:
+    if soh_proxy_pct < 97 or baseline_gap_pct <= -2:
         return "Warning"
     return "Normal"
 
@@ -129,12 +139,15 @@ def summarize_diagnosis(
         soh_proxy_pct=float(latest["soh_proxy_pct"]),
         residual_z_score=float(latest["residual_z_score"]),
         degradation_speed_v_per_h=degradation_speed,
+        baseline_gap_pct=float(latest["baseline_gap_pct"]),
         rapid_drop_detected=rapid_drop_detected,
     )
     return DiagnosisSummary(
         state=state,
         soh_proxy_pct=float(latest["soh_proxy_pct"]),
         residual_z_score=float(latest["residual_z_score"]),
+        baseline_gap_v=float(latest["voltage_residual_v"]),
+        baseline_gap_pct=float(latest["baseline_gap_pct"]),
         degradation_rate_v_per_h=degradation_rate,
         degradation_speed_v_per_h=degradation_speed,
         estimated_rul_h=rul_h,

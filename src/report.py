@@ -25,13 +25,16 @@ def generate_report(summary: DiagnosisSummary) -> str:
 Current State: {summary.state}
 
 SOH proxy: {summary.soh_proxy_pct:.2f} %
+Baseline voltage gap: {summary.baseline_gap_v:.3f} V ({summary.baseline_gap_pct:.2f} %)
 Baseline deviation z-score: {summary.residual_z_score:.2f} (reference only)
-Corrected-voltage slope: {summary.degradation_rate_v_per_h:.6f} V/h
-Degradation speed: {summary.degradation_speed_v_per_h:.6f} V/h decrease
 Latest corrected voltage: {summary.latest_corrected_voltage_v:.3f} V
 EOL corrected voltage threshold: {summary.eol_voltage_v:.3f} V
-Estimated RUL: {rul_text}
 Rapid corrected-voltage drop: {rapid_drop_text}
+
+Optional trend indicators:
+Corrected-voltage slope: {summary.degradation_rate_v_per_h:.6f} V/h
+Degradation speed: {summary.degradation_speed_v_per_h:.6f} V/h decrease
+Estimated RUL: {rul_text}
 
 Interpretation:
 {interpretation}
@@ -56,8 +59,8 @@ def save_report(report: str, output_path: str | Path) -> Path:
 
 def _interpretation(summary: DiagnosisSummary) -> str:
     lines = []
-    if summary.residual_z_score <= -2:
-        lines.append("- Stack voltage is lower than the learned normal baseline, so the baseline deviation score should be watched.")
+    if summary.baseline_gap_pct <= -2:
+        lines.append("- Stack voltage is meaningfully lower than the learned normal baseline.")
     else:
         lines.append("- Stack voltage is close to the learned normal baseline.")
     if summary.soh_proxy_pct < 97:
