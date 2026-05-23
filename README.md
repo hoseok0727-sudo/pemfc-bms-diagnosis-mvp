@@ -198,6 +198,15 @@ The dashboard uses a simpler baseline-gap rule:
 baseline_gap_pct = (V_stack - V_hat_normal) / V_hat_normal * 100
 ```
 
+Degradation speed and RUL are included as trend-support indicators. They do not
+override the two main anomaly rules. `s_deg` is displayed as a positive voltage
+decrease speed, and RUL is calculated only when recent corrected voltage is
+meaningfully decreasing:
+
+```text
+RUL(t) = (V_corr(t) - V_EOL) / s_deg
+```
+
 ## State Logic
 
 | State | Example condition | Meaning | Response |

@@ -64,6 +64,8 @@ def _compact_points(df: pd.DataFrame, max_points: int) -> list[dict[str, float |
         "residual_z_score",
         "corrected_voltage_v",
         "corrected_voltage_delta_v",
+        "degradation_speed_v_per_h",
+        "estimated_rul_h",
         "soh_proxy_raw_pct",
         "soh_proxy_pct",
     ]
@@ -74,6 +76,12 @@ def _compact_points(df: pd.DataFrame, max_points: int) -> list[dict[str, float |
     if "corrected_voltage_delta_v" not in df.columns:
         df["corrected_voltage_delta_v"] = df["corrected_voltage_v"].diff()
     df["corrected_voltage_delta_v"] = df["corrected_voltage_delta_v"].fillna(0.0)
+    if "degradation_speed_v_per_h" not in df.columns:
+        df["degradation_speed_v_per_h"] = 0.0
+    if "estimated_rul_h" not in df.columns:
+        df["estimated_rul_h"] = -1.0
+    df["degradation_speed_v_per_h"] = df["degradation_speed_v_per_h"].fillna(0.0)
+    df["estimated_rul_h"] = df["estimated_rul_h"].fillna(-1.0)
     out = []
     for row in df[cols].itertuples(index=False):
         point = {col: round(float(value), 6) for col, value in zip(cols, row)}

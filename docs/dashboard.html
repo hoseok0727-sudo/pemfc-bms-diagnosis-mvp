@@ -151,7 +151,7 @@
     main {
       padding: 22px;
       display: grid;
-      grid-template-rows: auto auto auto 1fr;
+      grid-template-rows: auto auto auto auto 1fr;
       gap: 14px;
       min-width: 0;
     }
@@ -262,6 +262,42 @@
       gap: 12px;
     }
 
+    .trend-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
+      gap: 12px;
+    }
+
+    .trend-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+      min-height: 104px;
+      display: grid;
+      gap: 7px;
+    }
+
+    .trend-card span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 760;
+      text-transform: uppercase;
+    }
+
+    .trend-card strong {
+      font-size: 23px;
+      line-height: 1.1;
+    }
+
+    .trend-card p {
+      margin: 0;
+      color: #3d4a57;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
     .metric {
       padding: 14px;
       min-height: 82px;
@@ -313,6 +349,7 @@
     @media (max-width: 980px) {
       .shell { grid-template-columns: 1fr; }
       .decision-grid,
+      .trend-grid,
       .metrics,
       .grid { grid-template-columns: 1fr; }
       .topbar { flex-direction: column; }
@@ -386,6 +423,19 @@
         <div class="metric"><span>SOH Proxy</span><strong id="sohMetric">0.00%</strong></div>
       </section>
 
+      <section class="trend-grid">
+        <div class="trend-card">
+          <span>Trend support: degradation speed</span>
+          <strong id="degradationMetric">0.000 mV/h</strong>
+          <p id="degradationText">Recent corrected voltage is not decreasing.</p>
+        </div>
+        <div class="trend-card">
+          <span>Trend support: simple RUL</span>
+          <strong id="rulMetric">N/A</strong>
+          <p id="rulText">RUL is shown only when the recent corrected voltage trend is meaningfully decreasing.</p>
+        </div>
+      </section>
+
       <section class="grid">
         <div class="chart-panel">
           <h3>Stack Voltage vs Normal Baseline</h3>
@@ -443,7 +493,11 @@
       time: document.getElementById("timeMetric"),
       voltage: document.getElementById("voltageMetric"),
       gap: document.getElementById("gapMetric"),
-      soh: document.getElementById("sohMetric")
+      soh: document.getElementById("sohMetric"),
+      degradation: document.getElementById("degradationMetric"),
+      degradationText: document.getElementById("degradationText"),
+      rul: document.getElementById("rulMetric"),
+      rulText: document.getElementById("rulText")
     };
 
     const charts = [
@@ -562,6 +616,12 @@
       els.voltage.textContent = `${format(point.voltage_v_smooth, 3)} V`;
       els.gap.textContent = `${format(point.baseline_gap_pct, 2)}%`;
       els.soh.textContent = `${format(point.soh_proxy_pct, 2)}%`;
+      els.degradation.textContent = `${format(point.degradation_speed_v_per_h * 1000, 3)} mV/h`;
+      els.degradationText.textContent = trendText(point.degradation_speed_v_per_h);
+      els.rul.textContent = formatRul(point.estimated_rul_h);
+      els.rulText.textContent = point.estimated_rul_h >= 0
+        ? "Simple RUL assumes the current voltage decrease speed continues."
+        : "No RUL is calculated while corrected voltage is flat or decreasing too slowly to treat as a meaningful trend.";
       updateRuleCards(point);
 
       for (const chart of charts) {
@@ -615,6 +675,19 @@
       if (soh < 95) return "Check";
       if (soh < 97) return "Warning";
       return "Normal";
+    }
+
+    function trendText(speed) {
+      if (speed <= 0) return "Recent corrected voltage is not decreasing.";
+      if (speed < 0.0005) return "Recent corrected voltage is decreasing slowly, below the RUL calculation threshold.";
+      if (speed < 0.001) return "Recent corrected voltage shows a measurable decrease.";
+      return "Recent corrected voltage is decreasing quickly.";
+    }
+
+    function formatRul(hours) {
+      if (hours < 0 || !Number.isFinite(hours)) return "N/A";
+      if (hours >= 1000) return `${format(hours / 1000, 2)}k h`;
+      return `${format(hours, 1)} h`;
     }
 
     function drawChart(chart, allPoints, visiblePoints) {

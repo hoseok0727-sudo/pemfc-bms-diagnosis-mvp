@@ -9,6 +9,9 @@ from sklearn.linear_model import LinearRegression
 from .baseline_model import BaselineVoltageModel
 
 
+MIN_RUL_DEGRADATION_SPEED_V_PER_H = 0.0005
+
+
 @dataclass(frozen=True)
 class DiagnosisSummary:
     state: str
@@ -62,7 +65,36 @@ def calculate_diagnosis_features(
     out["soh_proxy_raw_pct"] = out["corrected_voltage_v"] / initial_reference * 100.0
     out["soh_proxy_pct"] = out["soh_proxy_raw_pct"].clip(upper=100.0)
     out["corrected_voltage_delta_v"] = out["corrected_voltage_v"].diff()
+    out["eol_voltage_v"] = initial_reference * 0.9
+    out["degradation_speed_v_per_h"] = _rolling_degradation_speed(out)
+    out["estimated_rul_h"] = np.where(
+        out["degradation_speed_v_per_h"] >= MIN_RUL_DEGRADATION_SPEED_V_PER_H,
+        np.maximum(
+            0.0,
+            (out["corrected_voltage_v"] - out["eol_voltage_v"])
+            / out["degradation_speed_v_per_h"],
+        ),
+        np.nan,
+    )
     return out
+
+
+def _rolling_degradation_speed(
+    df: pd.DataFrame,
+    window_fraction: float = 0.2,
+    min_points: int = 20,
+) -> pd.Series:
+    window_size = max(min_points, int(len(df) * window_fraction))
+    time = df["time_h"].astype(float)
+    voltage = df["corrected_voltage_v"].astype(float)
+    rolling_kwargs = {"window": window_size, "min_periods": min_points}
+    mean_t = time.rolling(**rolling_kwargs).mean()
+    mean_v = voltage.rolling(**rolling_kwargs).mean()
+    mean_tv = (time * voltage).rolling(**rolling_kwargs).mean()
+    mean_t2 = (time * time).rolling(**rolling_kwargs).mean()
+    denominator = mean_t2 - mean_t * mean_t
+    slope = (mean_tv - mean_t * mean_v) / denominator.replace(0, np.nan)
+    return (-slope).clip(lower=0.0)
 
 
 def estimate_degradation_rate(
@@ -86,7 +118,7 @@ def estimate_rul_hours(
     degradation_speed_v_per_h: float,
     eol_voltage_v: float,
 ) -> float | None:
-    if degradation_speed_v_per_h <= 0:
+    if degradation_speed_v_per_h < MIN_RUL_DEGRADATION_SPEED_V_PER_H:
         return None
     remaining = (latest_corrected_voltage_v - eol_voltage_v) / degradation_speed_v_per_h
     return float(max(0.0, remaining))
