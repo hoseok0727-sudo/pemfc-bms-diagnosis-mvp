@@ -25,7 +25,7 @@ def generate_report(summary: DiagnosisSummary) -> str:
 Current State: {summary.state}
 
 SOH proxy: {summary.soh_proxy_pct:.2f} %
-Voltage residual z-score: {summary.residual_z_score:.2f}
+Baseline deviation z-score: {summary.residual_z_score:.2f} (reference only)
 Corrected-voltage slope: {summary.degradation_rate_v_per_h:.6f} V/h
 Degradation speed: {summary.degradation_speed_v_per_h:.6f} V/h decrease
 Latest corrected voltage: {summary.latest_corrected_voltage_v:.3f} V
@@ -57,7 +57,7 @@ def save_report(report: str, output_path: str | Path) -> Path:
 def _interpretation(summary: DiagnosisSummary) -> str:
     lines = []
     if summary.residual_z_score <= -2:
-        lines.append("- Stack voltage is lower than the learned normal baseline.")
+        lines.append("- Stack voltage is lower than the learned normal baseline, so the baseline deviation score should be watched.")
     else:
         lines.append("- Stack voltage is close to the learned normal baseline.")
     if summary.soh_proxy_pct < 97:

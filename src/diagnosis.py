@@ -52,7 +52,8 @@ def calculate_diagnosis_features(
     )
 
     initial_reference = float(out["corrected_voltage_v"].head(max(10, len(out) // 20)).median())
-    out["soh_proxy_pct"] = out["corrected_voltage_v"] / initial_reference * 100.0
+    out["soh_proxy_raw_pct"] = out["corrected_voltage_v"] / initial_reference * 100.0
+    out["soh_proxy_pct"] = out["soh_proxy_raw_pct"].clip(upper=100.0)
     out["corrected_voltage_delta_v"] = out["corrected_voltage_v"].diff()
     return out
 
@@ -90,11 +91,15 @@ def classify_state(
     degradation_speed_v_per_h: float,
     rapid_drop_detected: bool = False,
 ) -> str:
-    if soh_proxy_pct < 90 or residual_z_score <= -4 or rapid_drop_detected:
+    # The MVP status is driven by the voltage-based SOH proxy and rapid-drop
+    # rule. The residual z-score is kept as a reference indicator because it can
+    # be overly sensitive when the empirical baseline is imperfect.
+    _ = residual_z_score, degradation_speed_v_per_h
+    if soh_proxy_pct < 90 or rapid_drop_detected:
         return "Critical"
-    if soh_proxy_pct < 95 or residual_z_score <= -3:
+    if soh_proxy_pct < 95:
         return "Check"
-    if soh_proxy_pct < 97 or residual_z_score <= -2:
+    if soh_proxy_pct < 97:
         return "Warning"
     return "Normal"
 

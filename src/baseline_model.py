@@ -30,7 +30,7 @@ class BaselineVoltageModel:
         self,
         df: pd.DataFrame,
         normal_fraction: float = 0.1,
-        normal_hours: float | None = 24.0,
+        normal_hours: float | None = None,
     ) -> "BaselineVoltageModel":
         train = initial_normal_section(
             df,
@@ -114,18 +114,19 @@ class BaselineVoltageModel:
 def initial_normal_section(
     df: pd.DataFrame,
     normal_fraction: float = 0.1,
-    normal_hours: float | None = 24.0,
+    normal_hours: float | None = None,
 ) -> pd.DataFrame:
     if not 0 < normal_fraction <= 1:
         raise ValueError("normal_fraction must be in (0, 1].")
     fraction_rows = max(20, int(len(df) * normal_fraction))
-    if normal_hours is not None and "time_h" in df.columns:
+    if normal_hours is not None and normal_hours > 0 and "time_h" in df.columns:
         start_time = float(df["time_h"].min())
         hour_section = df[df["time_h"] <= start_time + normal_hours]
         if len(hour_section) >= 20:
-            fraction_section = df.head(min(fraction_rows, len(df)))
-            if len(hour_section) <= len(fraction_section):
-                return hour_section.copy()
+            # Use the larger initial section so the empirical current/temperature
+            # baseline has enough excitation to avoid unstable extrapolation.
+            rows = max(fraction_rows, len(hour_section))
+            return df.head(min(rows, len(df))).copy()
     return df.head(min(fraction_rows, len(df))).copy()
 
 

@@ -26,7 +26,7 @@ def run_pipeline(
     ieee_zip_path: str | Path | None = None,
     fuel_cell: str = "FC1",
     normal_fraction: float = 0.1,
-    normal_hours: float | None = 24.0,
+    normal_hours: float | None = None,
     output_dir: str | Path = PROJECT_ROOT / "outputs",
 ) -> tuple[Path, list[Path]]:
     output_dir = Path(output_dir)
@@ -97,7 +97,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ieee-zip", type=Path, default=None, help="IEEE PHM 2014 FC1/FC2 Excel zip.")
     parser.add_argument("--fuel-cell", choices=["FC1", "FC2"], default="FC1")
     parser.add_argument("--normal-fraction", type=float, default=0.1)
-    parser.add_argument("--normal-hours", type=float, default=24.0)
+    parser.add_argument("--normal-hours", type=float, default=None)
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "outputs")
     return parser.parse_args()
 

@@ -63,8 +63,11 @@ def _compact_points(df: pd.DataFrame, max_points: int) -> list[dict[str, float |
         "residual_z_score",
         "corrected_voltage_v",
         "corrected_voltage_delta_v",
+        "soh_proxy_raw_pct",
         "soh_proxy_pct",
     ]
+    if "soh_proxy_raw_pct" not in df.columns:
+        df["soh_proxy_raw_pct"] = df["soh_proxy_pct"]
     if "corrected_voltage_delta_v" not in df.columns:
         df["corrected_voltage_delta_v"] = df["corrected_voltage_v"].diff()
     df["corrected_voltage_delta_v"] = df["corrected_voltage_delta_v"].fillna(0.0)
@@ -85,12 +88,13 @@ def _classify_point(
     residual_z_score: float,
     corrected_voltage_delta_v: float,
 ) -> str:
+    _ = residual_z_score
     rapid_drop = corrected_voltage_delta_v < -0.5
-    if soh_proxy_pct < 90 or residual_z_score <= -4 or rapid_drop:
+    if soh_proxy_pct < 90 or rapid_drop:
         return "Critical"
-    if soh_proxy_pct < 95 or residual_z_score <= -3:
+    if soh_proxy_pct < 95:
         return "Check"
-    if soh_proxy_pct < 97 or residual_z_score <= -2:
+    if soh_proxy_pct < 97:
         return "Warning"
     return "Normal"
 
@@ -102,7 +106,7 @@ def _parse_report(path: Path) -> dict[str, str]:
     wanted = {
         "state": r"Current State:\s*(.+)",
         "soh": r"SOH proxy:\s*(.+)",
-        "z": r"Voltage residual z-score:\s*(.+)",
+        "z": r"(?:Baseline deviation z-score|Voltage residual z-score):\s*(.+)",
         "degradation": r"Degradation speed:\s*(.+)",
         "rul": r"Estimated RUL:\s*(.+)",
     }

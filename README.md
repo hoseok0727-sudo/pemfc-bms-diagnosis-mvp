@@ -82,8 +82,8 @@ t in [0, t0]
 
 Default implementation:
 
-- first `10%` of the dataset, or
-- initial `24 h` when that window contains enough samples.
+- first `10%` of the dataset by default,
+- optionally a larger initial hour window when `--normal-hours` is supplied.
 
 From that normal section, the residual mean and standard deviation are computed:
 
@@ -144,6 +144,11 @@ SOH proxy:
 SOH_proxy(t) = V_corr(t) / V_corr(t0) * 100
 ```
 
+For dashboard and report display, `SOH_proxy` is capped at `100%`. The uncapped
+raw value is kept as `soh_proxy_raw_pct` in the time-series CSV for audit. This
+prevents early noise or minor operating-condition correction error from making
+the health score look better than new.
+
 Corrected-voltage slope and degradation speed:
 
 ```text
@@ -183,14 +188,18 @@ Delta V_corr(t) < -Delta V_crit
 
 the status is escalated because SOH can still look acceptable even when voltage suddenly drops.
 
+The residual z-score is kept as a reference indicator, not as the main state
+decision rule. It is useful for seeing baseline deviation, but it can be too
+sensitive when the empirical baseline is imperfect.
+
 ## State Logic
 
 | State | Example condition | Meaning | Response |
 | --- | --- | --- | --- |
-| Normal | `SOH_proxy >= 97%` and `z_V > -2` | Similar to normal baseline | Continue monitoring |
-| Warning | `95% <= SOH_proxy < 97%` or `z_V <= -2` | Voltage decline signal starts | Strengthen trend monitoring |
-| Check | `90% <= SOH_proxy < 95%` or `z_V <= -3` | Meaningful performance decline | Check cooling/load/operating conditions |
-| Critical | `SOH_proxy < 90%` or `z_V <= -4` or rapid corrected-voltage drop | Operation restriction may be needed | Detailed inspection and operation review |
+| Normal | `SOH_proxy >= 97%` | Similar to initial corrected-voltage reference | Continue monitoring |
+| Warning | `95% <= SOH_proxy < 97%` | Voltage decline signal starts | Strengthen trend monitoring |
+| Check | `90% <= SOH_proxy < 95%` | Meaningful performance decline | Check cooling/load/operating conditions |
+| Critical | `SOH_proxy < 90%` or rapid corrected-voltage drop | Operation restriction may be needed | Detailed inspection and operation review |
 
 Thresholds are temporary MVP defaults. Real deployment should recalibrate them using stack manufacturer criteria and operating data.
 

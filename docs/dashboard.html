@@ -285,7 +285,7 @@
     <aside>
       <div class="brand">
         <h1>PEMFC BMS Early Anomaly</h1>
-        <span>Live playback view for voltage baseline, SOH proxy, residual, and operating data.</span>
+        <span>Live playback view for voltage baseline, capped SOH proxy, baseline deviation, and operating data.</span>
       </div>
 
       <div class="control-group">
@@ -329,7 +329,7 @@
         <div class="metric"><span>Operating Time</span><strong id="timeMetric">0.0 h</strong></div>
         <div class="metric"><span>Stack Voltage</span><strong id="voltageMetric">0.000 V</strong></div>
         <div class="metric"><span>SOH Proxy</span><strong id="sohMetric">0.00%</strong></div>
-        <div class="metric"><span>Residual Z</span><strong id="zMetric">0.00</strong></div>
+        <div class="metric"><span>Baseline Deviation</span><strong id="zMetric">0.00</strong></div>
         <div class="metric"><span>Power</span><strong id="powerMetric">0.0 W</strong></div>
       </section>
 
@@ -343,7 +343,7 @@
           <canvas id="sohChart"></canvas>
         </div>
         <div class="chart-panel">
-          <h3>Residual Z-score</h3>
+          <h3>Baseline Deviation Score</h3>
           <canvas id="zChart"></canvas>
         </div>
         <div class="chart-panel">
