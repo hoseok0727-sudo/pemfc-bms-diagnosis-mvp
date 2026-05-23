@@ -15,9 +15,12 @@ class DiagnosisSummary:
     soh_proxy_pct: float
     residual_z_score: float
     degradation_rate_v_per_h: float
+    degradation_speed_v_per_h: float
     estimated_rul_h: float | None
     latest_corrected_voltage_v: float
     eol_voltage_v: float
+    rapid_drop_v: float
+    rapid_drop_detected: bool
 
 
 def calculate_diagnosis_features(
@@ -50,6 +53,7 @@ def calculate_diagnosis_features(
 
     initial_reference = float(out["corrected_voltage_v"].head(max(10, len(out) // 20)).median())
     out["soh_proxy_pct"] = out["corrected_voltage_v"] / initial_reference * 100.0
+    out["corrected_voltage_delta_v"] = out["corrected_voltage_v"].diff()
     return out
 
 
@@ -71,62 +75,66 @@ def estimate_degradation_rate(
 
 def estimate_rul_hours(
     latest_corrected_voltage_v: float,
-    degradation_rate_v_per_h: float,
+    degradation_speed_v_per_h: float,
     eol_voltage_v: float,
 ) -> float | None:
-    if degradation_rate_v_per_h >= 0:
+    if degradation_speed_v_per_h <= 0:
         return None
-    remaining = (eol_voltage_v - latest_corrected_voltage_v) / degradation_rate_v_per_h
+    remaining = (latest_corrected_voltage_v - eol_voltage_v) / degradation_speed_v_per_h
     return float(max(0.0, remaining))
 
 
 def classify_state(
     soh_proxy_pct: float,
     residual_z_score: float,
-    degradation_rate_v_per_h: float,
-    previous_corrected_voltage_v: float | None = None,
-    latest_corrected_voltage_v: float | None = None,
+    degradation_speed_v_per_h: float,
+    rapid_drop_detected: bool = False,
 ) -> str:
-    rapid_drop = False
-    if previous_corrected_voltage_v is not None and latest_corrected_voltage_v is not None:
-        rapid_drop = (latest_corrected_voltage_v - previous_corrected_voltage_v) < -0.5
-
-    if soh_proxy_pct <= 80 or residual_z_score <= -4 or rapid_drop:
+    if soh_proxy_pct < 90 or residual_z_score <= -4 or rapid_drop_detected:
         return "Critical"
-    if soh_proxy_pct <= 90 or residual_z_score <= -3:
+    if soh_proxy_pct < 95 or residual_z_score <= -3:
         return "Check"
-    if soh_proxy_pct <= 95 or residual_z_score <= -2:
+    if soh_proxy_pct < 97 or residual_z_score <= -2:
         return "Warning"
     return "Normal"
 
 
 def summarize_diagnosis(
     df: pd.DataFrame,
-    eol_soh_pct: float = 80.0,
+    eol_soh_pct: float = 90.0,
+    rapid_drop_threshold_v: float = 0.5,
 ) -> DiagnosisSummary:
     latest = df.iloc[-1]
     initial_reference = float(df["corrected_voltage_v"].head(max(10, len(df) // 20)).median())
     eol_voltage_v = initial_reference * eol_soh_pct / 100.0
     degradation_rate = estimate_degradation_rate(df)
+    degradation_speed = max(0.0, -degradation_rate)
     rul_h = estimate_rul_hours(
         latest_corrected_voltage_v=float(latest["corrected_voltage_v"]),
-        degradation_rate_v_per_h=degradation_rate,
+        degradation_speed_v_per_h=degradation_speed,
         eol_voltage_v=eol_voltage_v,
     )
     previous = df["corrected_voltage_v"].iloc[-20] if len(df) >= 20 else np.nan
+    rapid_drop_v = 0.0
+    rapid_drop_detected = False
+    if not np.isnan(previous):
+        rapid_drop_v = float(latest["corrected_voltage_v"] - previous)
+        rapid_drop_detected = rapid_drop_v < -abs(rapid_drop_threshold_v)
     state = classify_state(
         soh_proxy_pct=float(latest["soh_proxy_pct"]),
         residual_z_score=float(latest["residual_z_score"]),
-        degradation_rate_v_per_h=degradation_rate,
-        previous_corrected_voltage_v=None if np.isnan(previous) else float(previous),
-        latest_corrected_voltage_v=float(latest["corrected_voltage_v"]),
+        degradation_speed_v_per_h=degradation_speed,
+        rapid_drop_detected=rapid_drop_detected,
     )
     return DiagnosisSummary(
         state=state,
         soh_proxy_pct=float(latest["soh_proxy_pct"]),
         residual_z_score=float(latest["residual_z_score"]),
         degradation_rate_v_per_h=degradation_rate,
+        degradation_speed_v_per_h=degradation_speed,
         estimated_rul_h=rul_h,
         latest_corrected_voltage_v=float(latest["corrected_voltage_v"]),
         eol_voltage_v=eol_voltage_v,
+        rapid_drop_v=rapid_drop_v,
+        rapid_drop_detected=rapid_drop_detected,
     )

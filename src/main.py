@@ -25,7 +25,8 @@ def run_pipeline(
     data_path: str | Path | None = None,
     ieee_zip_path: str | Path | None = None,
     fuel_cell: str = "FC1",
-    normal_fraction: float = 0.2,
+    normal_fraction: float = 0.1,
+    normal_hours: float | None = 24.0,
     output_dir: str | Path = PROJECT_ROOT / "outputs",
 ) -> tuple[Path, list[Path]]:
     output_dir = Path(output_dir)
@@ -40,7 +41,11 @@ def run_pipeline(
         raw = load_csv(data_path)
 
     processed = preprocess_data(raw)
-    model = BaselineVoltageModel().fit(processed, normal_fraction=normal_fraction)
+    model = BaselineVoltageModel().fit(
+        processed,
+        normal_fraction=normal_fraction,
+        normal_hours=normal_hours,
+    )
     diagnosed = calculate_diagnosis_features(processed, model)
     summary = summarize_diagnosis(diagnosed)
 
@@ -87,11 +92,12 @@ def create_plots(df, output_dir: str | Path) -> list[Path]:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run PEMFC BMS diagnosis MVP.")
+    parser = argparse.ArgumentParser(description="Run PEMFC BMS early anomaly detection MVP.")
     parser.add_argument("--data", type=Path, default=DEFAULT_SAMPLE_PATH, help="Standard CSV input.")
     parser.add_argument("--ieee-zip", type=Path, default=None, help="IEEE PHM 2014 FC1/FC2 Excel zip.")
     parser.add_argument("--fuel-cell", choices=["FC1", "FC2"], default="FC1")
-    parser.add_argument("--normal-fraction", type=float, default=0.2)
+    parser.add_argument("--normal-fraction", type=float, default=0.1)
+    parser.add_argument("--normal-hours", type=float, default=24.0)
     parser.add_argument("--output-dir", type=Path, default=PROJECT_ROOT / "outputs")
     return parser.parse_args()
 
@@ -103,6 +109,7 @@ def main() -> None:
         ieee_zip_path=args.ieee_zip,
         fuel_cell=args.fuel_cell,
         normal_fraction=args.normal_fraction,
+        normal_hours=args.normal_hours,
         output_dir=args.output_dir,
     )
     print(f"Report saved to: {report_path}")

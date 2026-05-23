@@ -26,7 +26,7 @@ def export_dashboard_data(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     payload = {
-        "generated_from": "PEMFC BMS diagnosis MVP outputs",
+        "generated_from": "PEMFC BMS early anomaly detection MVP outputs",
         "datasets": [],
     }
     for dataset_id, csv_path in DEFAULT_DATASETS.items():
@@ -62,22 +62,35 @@ def _compact_points(df: pd.DataFrame, max_points: int) -> list[dict[str, float |
         "voltage_residual_v",
         "residual_z_score",
         "corrected_voltage_v",
+        "corrected_voltage_delta_v",
         "soh_proxy_pct",
     ]
+    if "corrected_voltage_delta_v" not in df.columns:
+        df["corrected_voltage_delta_v"] = df["corrected_voltage_v"].diff()
+    df["corrected_voltage_delta_v"] = df["corrected_voltage_delta_v"].fillna(0.0)
     out = []
     for row in df[cols].itertuples(index=False):
         point = {col: round(float(value), 6) for col, value in zip(cols, row)}
-        point["state"] = _classify_point(point["soh_proxy_pct"], point["residual_z_score"])
+        point["state"] = _classify_point(
+            point["soh_proxy_pct"],
+            point["residual_z_score"],
+            point["corrected_voltage_delta_v"],
+        )
         out.append(point)
     return out
 
 
-def _classify_point(soh_proxy_pct: float, residual_z_score: float) -> str:
-    if soh_proxy_pct <= 80 or residual_z_score <= -4:
+def _classify_point(
+    soh_proxy_pct: float,
+    residual_z_score: float,
+    corrected_voltage_delta_v: float,
+) -> str:
+    rapid_drop = corrected_voltage_delta_v < -0.5
+    if soh_proxy_pct < 90 or residual_z_score <= -4 or rapid_drop:
         return "Critical"
-    if soh_proxy_pct <= 90 or residual_z_score <= -3:
+    if soh_proxy_pct < 95 or residual_z_score <= -3:
         return "Check"
-    if soh_proxy_pct <= 95 or residual_z_score <= -2:
+    if soh_proxy_pct < 97 or residual_z_score <= -2:
         return "Warning"
     return "Normal"
 
@@ -90,7 +103,7 @@ def _parse_report(path: Path) -> dict[str, str]:
         "state": r"Current State:\s*(.+)",
         "soh": r"SOH proxy:\s*(.+)",
         "z": r"Voltage residual z-score:\s*(.+)",
-        "degradation": r"Degradation rate:\s*(.+)",
+        "degradation": r"Degradation speed:\s*(.+)",
         "rul": r"Estimated RUL:\s*(.+)",
     }
     return {
@@ -106,7 +119,7 @@ def _dataset_label(dataset_id: str) -> str:
         "synthetic": "Synthetic demo",
         "ieee_fc1": "IEEE PHM 2014 FC1",
         "ieee_fc2": "IEEE PHM 2014 FC2",
-        "bad_data": "Injected fault test",
+        "bad_data": "Injected anomaly test",
     }.get(dataset_id, dataset_id)
 
 

@@ -1,8 +1,8 @@
-# PEMFC BMS Diagnosis MVP
+# BMS 데이터 기반 PEMFC 조기 이상감지 및 잔여수명 추정 MVP
 
-본 프로젝트는 PEMFC 스택을 대상으로 BMS 수준의 전압, 전류, 온도, 운전시간 데이터를 이용하여 상태진단을 수행하는 MVP이다. 정상 전압 기준선, 전압 잔차, SOH proxy, 열화율, 간이 RUL을 계산하여 조기 이상감지와 점검 필요성 판단을 지원한다. 본 시스템은 세부 전기화학 고장 원인을 확정하는 정밀 진단기가 아니라, BMS 데이터 기반 유지보수 보조 시스템이다.
+This project is a minimum viable product for PEMFC stack early anomaly detection and maintenance support using BMS-level operating data only. It uses stack voltage, current, temperature, and operating time to estimate a normal voltage baseline, voltage residual, voltage-based SOH proxy, degradation speed, and simple RUL.
 
-This project is a minimum viable product for PEMFC stack health diagnosis using BMS-level operating data. The system uses stack voltage, current, temperature, and operating time to estimate a normal voltage baseline, voltage residual, SOH proxy, degradation rate, and simple RUL. It is intended as an early warning and maintenance-support tool, not as a precise electrochemical failure diagnosis system.
+본 MVP는 EIS, HFR, Rct, 셀별 전압, 유량, 압력, 습도 데이터를 사용하지 않고, BMS에서 비교적 쉽게 얻을 수 있는 스택 전압, 전류, 온도, 운전시간만 사용한다. 따라서 세부 고장 원인을 확정하지는 않으며, 정상 전압 기준선 대비 전압 잔차, 전압 기반 SOH proxy, 열화속도, 간이 RUL을 이용해 Normal, Warning, Check, Critical 상태를 판단하는 조기 이상감지 및 유지보수 보조 시스템으로 설계한다.
 
 ## Live Demo Site
 
@@ -29,14 +29,15 @@ Included:
 | Item | Description |
 | --- | --- |
 | BMS data input | Stack voltage, current, temperature, operating time |
+| Sensor quality check | Missing values, invalid ranges, spikes, and smoothing |
 | Power calculation | `P = V * I` |
-| Normal baseline model | Empirical voltage model using current and temperature |
-| Voltage residual | Difference between measured voltage and normal predicted voltage |
+| Normal baseline model | Empirical voltage baseline using current and temperature |
+| Voltage residual | Difference between measured voltage and predicted normal voltage |
 | SOH proxy | Corrected-voltage ratio versus initial reference |
-| Degradation rate | Linear trend of corrected voltage versus operating time |
-| Simple RUL | Remaining hours assuming the current degradation trend continues |
+| Degradation speed | Positive voltage decrease speed, `s_deg = -k_deg` |
+| Simple RUL | Remaining hours assuming the current voltage decrease speed continues |
 | State classification | Normal / Warning / Check / Critical |
-| Report output | Text report with interpretation and recommended action |
+| Rapid-drop rule | Escalates status when corrected voltage drops sharply |
 
 Excluded:
 
@@ -46,6 +47,7 @@ Excluded:
 | HFR and Rct estimation | Requires separate diagnostic equipment or experiments |
 | Cell-level voltage diagnosis | Requires CVM or cell-level sensing |
 | Definite root-cause identification | BMS-level data alone is insufficient |
+| Flooding/drying or hydrogen-shortage classification | Requires additional physical signals |
 | Generalization to all fuel-cell types | This MVP is scoped to PEMFC |
 
 ## Input Data
@@ -61,7 +63,44 @@ The standard CSV schema is:
 
 The code can also read the IEEE PHM 2014 PEMFC aging Excel zip (`FC1_FC2_Excel.zip`) and uses only `Ageing` workbooks. EIS and polarization files are intentionally ignored to keep the MVP within BMS-level data.
 
+## Preprocessing
+
+BMS raw data can include missing values, sensor noise, and spikes. The MVP:
+
+- removes missing values in required columns,
+- excludes clearly invalid ranges such as negative voltage or negative current,
+- removes impossible temperature values outside `-40` to `120 deg C`,
+- applies a rolling median and rolling average to reduce spikes and noise.
+
+## Normal Training Section
+
+The normal baseline and residual statistics are learned only from an initial normal section:
+
+```text
+t in [0, t0]
+```
+
+Default implementation:
+
+- first `10%` of the dataset, or
+- initial `24 h` when that window contains enough samples.
+
+From that normal section, the residual mean and standard deviation are computed:
+
+```text
+mu_r = mean(r_V)
+sigma_r = std(r_V)
+```
+
+This split is important because the later diagnosis section must be compared against a fixed normal reference.
+
 ## Equations
+
+Input vector:
+
+```text
+X(t) = [V_stack(t), I(t), T(t), t]
+```
 
 Power:
 
@@ -75,7 +114,11 @@ Empirical normal voltage baseline:
 V_hat_normal(t) = beta0 + beta1*I(t) + beta2*I(t)^2 + beta3*T(t) + beta4*I(t)*T(t)
 ```
 
-In fixed-load aging data where the initial normal section has too little current and temperature variation, the implementation falls back to a constant initial-voltage baseline. This avoids unstable polynomial coefficients while preserving the MVP goal: detecting voltage decline from a normal BMS operating reference.
+전류가 커지면 전압은 자연스럽게 낮아지고, 온도도 전압에 영향을 준다. 따라서 단순히 전압이 낮다고 이상으로 판단하지 않고, 전류와 온도를 반영한 정상 전압 기준선을 먼저 만든다.
+
+This baseline is not a physical electrochemical model. It is an empirical baseline model learned from the initial normal operating data.
+
+In fixed-load aging data where the initial normal section has too little current and temperature variation, the implementation falls back to a constant initial-voltage baseline. This avoids unstable polynomial coefficients while preserving the MVP goal.
 
 Voltage residual:
 
@@ -101,29 +144,53 @@ SOH proxy:
 SOH_proxy(t) = V_corr(t) / V_corr(t0) * 100
 ```
 
-Degradation rate:
+Corrected-voltage slope and degradation speed:
 
 ```text
 V_corr(t) ~= a + k_deg*t
 k_deg = dV_corr / dt
+s_deg = -k_deg
+```
+
+The dashboard and report use `s_deg` as a positive degradation speed. A larger `s_deg` means the corrected voltage is decreasing faster.
+
+EOL threshold:
+
+```text
+V_EOL = 0.9 * V_corr(t0)
+SOH_proxy,EOL = 90%
 ```
 
 Simple RUL:
 
 ```text
-RUL = (V_EOL - V_corr(t)) / k_deg, only when k_deg < 0
+RUL(t) = (V_corr(t) - V_EOL) / s_deg, only when s_deg > 0
 ```
 
-본 연구의 RUL은 실제 고장 시점을 정확히 예측하는 값이 아니라, 현재 전압 저하 추세가 유지된다는 가정하에 계산한 간이 잔여 운전시간 지표이다.
+RUL is not a precise prediction of the actual failure time. It is a maintenance-support indicator calculated under the assumption that the current voltage decrease speed continues.
+
+Rapid corrected-voltage drop:
+
+```text
+Delta V_corr(t) = V_corr(t) - V_corr(t - Delta t)
+```
+
+If:
+
+```text
+Delta V_corr(t) < -Delta V_crit
+```
+
+the status is escalated because SOH can still look acceptable even when voltage suddenly drops.
 
 ## State Logic
 
-| State | Example condition | Meaning |
-| --- | --- | --- |
-| Normal | `SOH > 95%` and `z_V > -2` | Normal operating trend |
-| Warning | `90% < SOH <= 95%` or `-3 < z_V <= -2` | Trend monitoring required |
-| Check | `80% < SOH <= 90%` or `-4 < z_V <= -3` | Inspection recommended |
-| Critical | `SOH <= 80%`, `z_V <= -4`, or rapid voltage drop | Detailed inspection or operation restriction required |
+| State | Example condition | Meaning | Response |
+| --- | --- | --- | --- |
+| Normal | `SOH_proxy >= 97%` and `z_V > -2` | Similar to normal baseline | Continue monitoring |
+| Warning | `95% <= SOH_proxy < 97%` or `z_V <= -2` | Voltage decline signal starts | Strengthen trend monitoring |
+| Check | `90% <= SOH_proxy < 95%` or `z_V <= -3` | Meaningful performance decline | Check cooling/load/operating conditions |
+| Critical | `SOH_proxy < 90%` or `z_V <= -4` or rapid corrected-voltage drop | Operation restriction may be needed | Detailed inspection and operation review |
 
 Thresholds are temporary MVP defaults. Real deployment should recalibrate them using stack manufacturer criteria and operating data.
 
@@ -185,7 +252,7 @@ Open:
 http://localhost:8765/dashboard.html
 ```
 
-The dashboard replays each diagnosis time series as a live-looking stream. It is not connected to a real BMS; it simulates realtime updates from saved diagnosis outputs for MVP demonstration.
+The dashboard replays each time series as a live-looking stream. It is not connected to a real BMS; it simulates realtime updates from saved diagnosis outputs for MVP demonstration.
 
 The calculation explanation report is also available at:
 
@@ -223,7 +290,7 @@ https://hoseok0727-sudo.github.io/pemfc-bms-diagnosis-mvp/
 
 - This MVP is limited to PEMFC.
 - It uses only BMS-level stack voltage, current, temperature, and operating time.
-- It does not use EIS, HFR, Rct, or cell-level voltage diagnosis.
+- It does not use EIS, HFR, Rct, cell-level voltage, flow, pressure, or humidity data.
 - It does not identify specific electrochemical failure modes such as catalyst degradation, membrane drying, flooding, or gas starvation.
 - The RUL value is a simple trend-based estimate, not a precise lifetime prediction.
 - Applying this workflow to PAFC, SOFC, MCFC, or other fuel-cell types requires retraining the baseline model and recalibrating thresholds.

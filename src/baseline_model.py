@@ -26,8 +26,17 @@ class BaselineVoltageModel:
         self.use_constant_baseline_ = False
         self.is_fitted = False
 
-    def fit(self, df: pd.DataFrame, normal_fraction: float = 0.2) -> "BaselineVoltageModel":
-        train = initial_normal_section(df, normal_fraction=normal_fraction)
+    def fit(
+        self,
+        df: pd.DataFrame,
+        normal_fraction: float = 0.1,
+        normal_hours: float | None = 24.0,
+    ) -> "BaselineVoltageModel":
+        train = initial_normal_section(
+            df,
+            normal_fraction=normal_fraction,
+            normal_hours=normal_hours,
+        )
         self.reference_current_a_ = float(train["current_a_smooth"].median())
         self.reference_temperature_c_ = float(train["temperature_c_smooth"].median())
         self.baseline_voltage_v_ = float(train["voltage_v_smooth"].median())
@@ -102,11 +111,22 @@ class BaselineVoltageModel:
             raise RuntimeError("BaselineVoltageModel must be fitted before prediction.")
 
 
-def initial_normal_section(df: pd.DataFrame, normal_fraction: float = 0.2) -> pd.DataFrame:
+def initial_normal_section(
+    df: pd.DataFrame,
+    normal_fraction: float = 0.1,
+    normal_hours: float | None = 24.0,
+) -> pd.DataFrame:
     if not 0 < normal_fraction <= 1:
         raise ValueError("normal_fraction must be in (0, 1].")
-    n_rows = max(20, int(len(df) * normal_fraction))
-    return df.head(min(n_rows, len(df))).copy()
+    fraction_rows = max(20, int(len(df) * normal_fraction))
+    if normal_hours is not None and "time_h" in df.columns:
+        start_time = float(df["time_h"].min())
+        hour_section = df[df["time_h"] <= start_time + normal_hours]
+        if len(hour_section) >= 20:
+            fraction_section = df.head(min(fraction_rows, len(df)))
+            if len(hour_section) <= len(fraction_section):
+                return hour_section.copy()
+    return df.head(min(fraction_rows, len(df))).copy()
 
 
 def _has_low_excitation(df: pd.DataFrame) -> bool:

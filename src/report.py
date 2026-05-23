@@ -9,21 +9,29 @@ def generate_report(summary: DiagnosisSummary) -> str:
     rul_text = (
         f"{summary.estimated_rul_h:.1f} h"
         if summary.estimated_rul_h is not None
-        else "N/A (degradation trend is not negative)"
+        else "N/A (corrected voltage is not decreasing)"
     )
     interpretation = _interpretation(summary)
     recommended_action = _recommended_action(summary.state)
 
-    return f"""PEMFC Diagnosis Report
+    rapid_drop_text = (
+        f"Yes ({summary.rapid_drop_v:.3f} V over recent window)"
+        if summary.rapid_drop_detected
+        else f"No ({summary.rapid_drop_v:.3f} V over recent window)"
+    )
+
+    return f"""PEMFC Early Anomaly Detection Report
 
 Current State: {summary.state}
 
 SOH proxy: {summary.soh_proxy_pct:.2f} %
 Voltage residual z-score: {summary.residual_z_score:.2f}
-Degradation rate: {summary.degradation_rate_v_per_h:.6f} V/h
+Corrected-voltage slope: {summary.degradation_rate_v_per_h:.6f} V/h
+Degradation speed: {summary.degradation_speed_v_per_h:.6f} V/h decrease
 Latest corrected voltage: {summary.latest_corrected_voltage_v:.3f} V
 EOL corrected voltage threshold: {summary.eol_voltage_v:.3f} V
 Estimated RUL: {rul_text}
+Rapid corrected-voltage drop: {rapid_drop_text}
 
 Interpretation:
 {interpretation}
@@ -52,10 +60,12 @@ def _interpretation(summary: DiagnosisSummary) -> str:
         lines.append("- Stack voltage is lower than the learned normal baseline.")
     else:
         lines.append("- Stack voltage is close to the learned normal baseline.")
-    if summary.soh_proxy_pct < 95:
+    if summary.soh_proxy_pct < 97:
         lines.append("- Corrected voltage shows measurable degradation versus the initial reference.")
     else:
         lines.append("- Corrected voltage remains near the initial reference level.")
+    if summary.rapid_drop_detected:
+        lines.append("- A rapid corrected-voltage drop was detected, so the status is escalated.")
     lines.append("- The result is an early warning signal based on BMS data, not a root-cause diagnosis.")
     return "\n".join(lines)
 

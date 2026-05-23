@@ -62,7 +62,7 @@ def preprocess_data(
     rolling_window: int = 15,
     clip_quantiles: tuple[float, float] = (0.001, 0.999),
 ) -> pd.DataFrame:
-    """Clean, sort, smooth, and lightly winsorize BMS operating data."""
+    """Clean, range-check, smooth, and lightly winsorize BMS operating data."""
     df = validate_required_columns(df).copy()
     df = df.replace([np.inf, -np.inf], np.nan)
     df = df.dropna(subset=REQUIRED_COLUMNS)
@@ -70,14 +70,21 @@ def preprocess_data(
     for col in REQUIRED_COLUMNS:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     df = df.dropna(subset=REQUIRED_COLUMNS)
+    df = _apply_sensor_quality_checks(df)
     df = df.sort_values("time_h").drop_duplicates(subset=["time_h"]).reset_index(drop=True)
 
     for col in ["voltage_v", "current_a", "temperature_c"]:
         low, high = df[col].quantile(list(clip_quantiles))
         df[col] = df[col].clip(low, high)
+        median_col = f"{col}_median"
+        df[median_col] = (
+            df[col]
+            .rolling(window=rolling_window, min_periods=1, center=True)
+            .median()
+        )
         smooth_col = f"{col}_smooth"
         df[smooth_col] = (
-            df[col]
+            df[median_col]
             .rolling(window=rolling_window, min_periods=1, center=True)
             .mean()
         )
@@ -93,6 +100,17 @@ def validate_required_columns(df: pd.DataFrame) -> pd.DataFrame:
             f"Required schema is {REQUIRED_COLUMNS}."
         )
     return df
+
+
+def _apply_sensor_quality_checks(df: pd.DataFrame) -> pd.DataFrame:
+    """Exclude clearly invalid BMS readings before smoothing."""
+    valid = (
+        (df["time_h"] >= 0)
+        & (df["voltage_v"] > 0)
+        & (df["current_a"] >= 0)
+        & df["temperature_c"].between(-40, 120)
+    )
+    return df.loc[valid].copy()
 
 
 def load_ieee_phm2014_zip(
