@@ -1,0 +1,123 @@
+{
+  "project": "ns_v0_15",
+  "date": "2026-09-09",
+  "source_scope": "Local definitions only. No full repository build or independent verification of proposed global theorem.",
+  "navier_stokes_source": {
+    "repository": "openai/NavierStokesAndEuler",
+    "commit": "8937a8f4cbc7abaab5e9e97d1cc7f5d2319d9538",
+    "items": [
+      {
+        "path": "NavierStokes/OutgoingSchedule.lean",
+        "url": "https://github.com/openai/NavierStokesAndEuler/blob/8937a8f4cbc7abaab5e9e97d1cc7f5d2319d9538/NavierStokes/OutgoingSchedule.lean",
+        "symbols": ["sigma", "Parameters.exponents", "Parameters.lower", "Parameters.upper", "mainPulse", "pulseAmplitude", "momentScale", "prefixCoefficient", "correction"],
+        "read_line_ranges": null,
+        "range_note": "Relevant definitions read in project v0.13/v0.14 and preceding connector results; no fresh precise line-range claim"
+      },
+      {
+        "path": "NavierStokes/OutgoingPulseBounds.lean",
+        "url": "https://github.com/openai/NavierStokesAndEuler/blob/8937a8f4cbc7abaab5e9e97d1cc7f5d2319d9538/NavierStokes/OutgoingPulseBounds.lean",
+        "symbols": ["pulseAmplitude_split", "pulseAmplitude_small", "prefixCoefficient_decay", "prefixCoefficient_small"],
+        "read_line_ranges": null,
+        "range_note": "Relevant definitions read in project v0.13/v0.14 and preceding connector results; no fresh precise line-range claim"
+      },
+      {
+        "path": "NavierStokes/OutgoingEntranceCone.lean",
+        "url": "https://github.com/openai/NavierStokesAndEuler/blob/8937a8f4cbc7abaab5e9e97d1cc7f5d2319d9538/NavierStokes/OutgoingEntranceCone.lean",
+        "symbols": ["historyAverage", "averagedDrop", "angularLag", "dropSpeed"],
+        "read_line_ranges": null,
+        "range_note": "Relevant definitions read in project v0.13/v0.14 and preceding connector results; no fresh precise line-range claim"
+      },
+      {
+        "path": "NavierStokes/PulseLag.lean",
+        "url": "https://github.com/openai/NavierStokesAndEuler/blob/8937a8f4cbc7abaab5e9e97d1cc7f5d2319d9538/NavierStokes/PulseLag.lean",
+        "symbols": ["decay", "convolution", "lag_hasDerivAt", "normalizedLag"],
+        "read_line_ranges": null,
+        "range_note": "Relevant definitions read in project v0.13/v0.14 and preceding connector results; no fresh precise line-range claim"
+      },
+      {
+        "path": "NavierStokes/PulseCone.lean",
+        "url": "https://github.com/openai/NavierStokesAndEuler/blob/8937a8f4cbc7abaab5e9e97d1cc7f5d2319d9538/NavierStokes/PulseCone.lean",
+        "symbols": ["pulseAngularSource", "Ubar_pulse", "Ubar_parameter_pulse", "Qs_pulse_hasDerivAt", "ode_equilibrium_error"],
+        "read_line_ranges": null,
+        "range_note": "Relevant definitions read in project v0.13/v0.14 and preceding connector results; no fresh precise line-range claim"
+      },
+      {
+        "path": "NavierStokes/LocalizedMomentRepair.lean",
+        "url": "https://github.com/openai/NavierStokesAndEuler/blob/8937a8f4cbc7abaab5e9e97d1cc7f5d2319d9538/NavierStokes/LocalizedMomentRepair.lean",
+        "symbols": ["bump", "matrix", "coefficients", "repair", "repair_exact"],
+        "read_line_ranges": [[1, 280]],
+        "range_note": "Exact file range recorded in the v0.15 research session"
+      },
+      {
+        "path": "NavierStokes/SmoothCutoffs.lean",
+        "url": "https://github.com/openai/NavierStokesAndEuler/blob/8937a8f4cbc7abaab5e9e97d1cc7f5d2319d9538/NavierStokes/SmoothCutoffs.lean",
+        "symbols": ["cutoffBump", "cutoff_mem_Icc", "cutoff_one_of_abs_le", "cutoff_zero_of_one_le_abs"],
+        "read_line_ranges": [[1, 180]],
+        "range_note": "Exact file range recorded in the v0.15 research session"
+      }
+    ]
+  },
+  "mathlib_source": {
+    "repository": "leanprover-community/mathlib4",
+    "ref": "v4.34.0-rc2",
+    "ref_scope": "Inspected source tag; full dependency closure/build not performed.",
+    "items": [
+      {
+        "path": "Mathlib/Analysis/Calculus/BumpFunction/Basic.lean",
+        "url": "https://github.com/leanprover-community/mathlib4/blob/v4.34.0-rc2/Mathlib/Analysis/Calculus/BumpFunction/Basic.lean",
+        "symbols": ["someContDiffBumpBase", "ContDiffBump.toFun"],
+        "read_line_ranges": [[1, 135], [130, 250]]
+      },
+      {
+        "path": "Mathlib/Analysis/Calculus/BumpFunction/InnerProduct.lean",
+        "url": "https://github.com/leanprover-community/mathlib4/blob/v4.34.0-rc2/Mathlib/Analysis/Calculus/BumpFunction/InnerProduct.lean",
+        "symbols": ["ContDiffBumpBase.ofInnerProductSpace"],
+        "read_line_ranges": [[1, 200]]
+      },
+      {
+        "path": "Mathlib/Analysis/SpecialFunctions/SmoothTransition.lean",
+        "url": "https://github.com/leanprover-community/mathlib4/blob/v4.34.0-rc2/Mathlib/Analysis/SpecialFunctions/SmoothTransition.lean",
+        "symbols": ["expNegInvGlue", "Real.smoothTransition"],
+        "read_line_ranges": [[1, 170]]
+      }
+    ],
+    "critical_note": "The theorem uses only guaranteed cutoff properties. Explicit representative numerical cutoffs are NOT identified with the Nonempty.some-selected base."
+  },
+  "announcement": {
+    "url": "https://openai.com/ko-KR/research/index/publication/",
+    "title": "An OpenAI model proposes a solution to the Navier–Stokes problem",
+    "published": "2026-09-08",
+    "checked": "2026-09-09",
+    "status_used": "proposed solution"
+  },
+  "related_primary_literature": [
+    {
+      "author": "Nicholas J. Higham",
+      "title": "Error analysis of the Björck–Pereyra algorithms for solving Vandermonde systems",
+      "year": 1987,
+      "journal": "Numerische Mathematik",
+      "volume": 50,
+      "issue": 5,
+      "pages": "613–632",
+      "doi": "10.1007/BF01408579",
+      "retrieved": "institutional author publication page and abstract",
+      "url": "https://research.manchester.ac.uk/en/publications/error-analysis-of-the-bj%C3%B6rck-pereyra-algorithms-for-solving-vande/",
+      "use": "Background on structured-system error analysis only; no new general solver claim."
+    },
+    {
+      "authors": ["Jean-Philippe Lessard", "J. D. Mireles James"],
+      "title": "Computer Assisted Fourier Analysis in Sequence Spaces of Varying Regularity",
+      "year": 2017,
+      "journal": "SIAM Journal on Mathematical Analysis",
+      "volume": 49,
+      "issue": 1,
+      "pages": "530–561",
+      "doi": "10.1137/16M1056006",
+      "url": "https://epubs.siam.org/doi/10.1137/16M1056006",
+      "retrieved": "Publisher abstract and bibliographic metadata",
+      "use": "Background on rigorous numerics; not a full-PDE validation method implemented here."
+    }
+  ],
+  "novelty": "Preliminary literature check only. No firstness or publishability claim.",
+  "source_text_distribution": "No whole upstream files or font files redistributed; source locations are linked."
+}

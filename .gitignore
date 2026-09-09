@@ -1,7 +1,0 @@
-.venv/
-__pycache__/
-*.pyc
-.ipynb_checkpoints/
-data/ieee_phm2014_*.csv
-data/raw/
-outputs/

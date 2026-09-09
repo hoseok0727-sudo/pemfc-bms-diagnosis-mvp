@@ -1,0 +1,12 @@
+{
+  "all_exact_checks_pass": true,
+  "arithmetic": "fractions.Fraction, no floating point in assertions",
+  "lambda": "1/1000",
+  "h": "1/100000000",
+  "B": "1",
+  "G_certified_upper": "9163/1000000000",
+  "repair_source_certified_upper": "10^(-2000)",
+  "Q_strict_lower": "9679/10000000",
+  "claim_scope": "conditional scalar angular lag on 0<=y<=13000",
+  "not_a_Lean_or_PDE_certificate": true
+}

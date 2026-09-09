@@ -1,0 +1,444 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=25mm]{geometry}
+\usepackage{kotex}
+\usepackage{fontspec}
+\setmainfont{Liberation Serif}
+\setmainhangulfont{Noto Serif CJK KR}
+\setsanshangulfont{Noto Sans CJK KR}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs,array,longtable,graphicx,float}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\setlist{nosep}
+\setlength{\parindent}{1em}
+\setlength{\parskip}{3pt}
+\linespread{1.12}
+\emergencystretch=3em
+\setlength{\headheight}{15pt}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small 두 모멘트 펄스 보정의 상쇄 보존 추정}
+\fancyhead[R]{\small 검토용 초안 v0.15}
+\fancyfoot[C]{\thepage}
+\theoremstyle{definition}
+\newtheorem{theorem}{정리}[section]
+\newtheorem{lemma}[theorem]{보조정리}
+\newtheorem{corollary}[theorem]{따름정리}
+\theoremstyle{remark}\newtheorem{remark}[theorem]{주의}
+\renewcommand{\proofname}{증명}
+\newcommand{\R}{\mathbb R}
+\newcommand{\norm}[1]{\left\lVert #1\right\rVert}
+\newcommand{\e}{\mathrm e}
+\newcommand{\rep}{\mathrm{rep}}
+\newcommand{\eq}{\mathrm{eq}}
+\newcommand{\sm}{\mathrm{sm}}
+\newcommand{\src}{\mathrm{src}}
+\title{\bfseries 두 모멘트 펄스 보정의 상쇄 보존 추정과\\전 구간 각방향 양성\\[6pt]
+\large 제안된 Navier--Stokes 구성의 국소 스칼라 하위문제}
+\author{검토용 연구 초안\quad\textnormal{저자·소속 확정 전}}
+\date{2026년 9월 9일\quad / \quad v0.15}
+\begin{document}
+\maketitle
+\begin{abstract}
+로그 반경 좌표에서 주 펄스와 두 개의 분리된 모멘트 보정으로 구성되는 스칼라 이력 문제를 분석한다. 대상은 공개된 Navier--Stokes 제안 구성의 국소 정의이며, 전체 특이점 정리의 타당성을 가정하거나 검증하는 작업과 구분된다. 배경 진폭과 모멘트 계수를 곱으로 유지하여 두 과거 이력 항의 큰 정규화 상수를 제거한다. 이어 모멘트 행렬을 작은 이동좌표 행렬로 정확히 인수분해하고, 보정함수의 구체적인 모양에 의존하지 않는 가중 상계를 얻는다. 이 상계를 각방향 이력 방정식에 결합하면 후반 보정을 포함한 전체 펄스 구간의 양성 충분조건을 도출할 수 있다. 국소 입력 $\lambda=10^{-3}$, $h=10^{-8}$, 진입 진폭 $B=1$ 및 명시한 진폭 함수 제한 아래에서 $Q>0.0009679$를 보장하는 유리수 산술 검산을 제시한다. 전체 응력 cone, 압력·축방향 조건, 실제 외력의 구현 가능성은 이 정리의 범위에 포함되지 않는다. 원고는 수학적 검토와 신규성 평가를 받기 전의 계산 수학 기술 노트이다.
+\end{abstract}
+\noindent\textbf{키워드:} 모멘트 보정, 가중 추정, 스칼라 양성, 지수형 행렬, 재현 가능한 수치 계산
+
+\section{연구 범위와 기존 작업과의 관계}
+OpenAI는 2026년 9월 8일 Navier--Stokes 문제에 대한 제안된 해법과 Lean 형식화를 공개했다고 연구 색인에 기록하였다\cite{announcement}. 이 노트는 해당 저장소의 커밋 \texttt{8937a8f4}에 고정된 국소 함수 정의를 출발점으로 한다\cite{schedule,repair,cone}. 전체 저장소를 Lean 커널로 빌드하지 않았으며, 공개된 전체 주장의 독립 검증을 수행하지 않았다.
+
+여기서 분석하는 질문은 제한적이다. \textbf{두 모멘트 제약을 만족시키는 후반 보정이, 이미 확보한 각방향 스칼라 양성 조건을 깨뜨릴 수 있는가?} 이전의 주 펄스 전용 추정을 보정함수까지 확장하여, 이 질문에 대한 명시적 충분조건을 얻는다. 진폭을 단순히 재명명하는 대신 최종 방정식에 실제로 등장하는 곱을 보존하며, 행렬의 큰 지수 인자를 해를 구하기 전에 분리한다.
+
+구조화된 행렬의 스케일링과 안정적인 해법 자체는 기존 수치선형대수의 주제다\cite{higham}. 수치 근사에 대한 사후 오차 검증과 존재 정리는 별도의 엄밀한 수치해석 분야를 이룬다\cite{lessard}. 본문은 새로운 일반 행렬해법이나 전체 PDE의 사후 존재 정리를 주장하지 않는다. 검토받아야 할 기여는 특정 펄스 보정의 가중 모멘트 상계, 그 상계의 스칼라 이력식 적용, 그리고 재현 가능한 유한 수치 조건이다. 선행연구 조사는 예비 수준이며, 학술적 신규성은 확정하지 않았다.
+
+\paragraph{좌표와 해석.}
+이하 $y$는 펄스 시작점에서 이동한 \textbf{로그 반경 좌표}다. $y$의 구간 길이와 미분방정식의 감쇠를 실제 시간이나 장치 길이로 해석하지 않는다. $Q,E,B$ 역시 해당 구성의 프로필 변수이며 SI 단위의 직접 관측량으로 보지 않는다.
+
+\section{국소 문제의 정의}
+\subsection{매개변수와 주 펄스}
+다음을 가정한다.
+\begin{equation}\label{params}
+0<\lambda\le\frac1{120},\qquad 0\le h<\lambda,\qquad B>0,\qquad |\eta|\le1.
+\end{equation}
+기호를
+\begin{equation}
+\alpha=\tfrac12+\lambda,\quad \beta_0=\tfrac12-\lambda,\quad
+\beta_1=\tfrac12-2\lambda,\quad c=1-\lambda,\quad D=\tfrac12-h,
+\end{equation}
+\begin{equation}
+L=13/\lambda,\quad \phi(\eta)=(1+\eta^2)^{-1},\quad
+p(\eta)=\eta(1+\eta^2),\quad g(\eta)=2\eta/(1+\eta^2)
+\end{equation}
+로 둔다. 매끄러운 계단 $\sigma$는 $x\le0$에서 0, $x\ge1$에서 1이며, 내부에서는
+\begin{equation}
+\sigma(x)=\frac{\exp(-1/x^2)}{\exp(-1/x^2)+\exp(-1/(1-x)^2)}.
+\end{equation}
+원문의 주 펄스는\cite{schedule}
+\begin{equation}\label{mainpulse}
+f(z)=\left(\int_0^z\sigma(50s)\,ds\right)(1-\sigma(z-10)).
+\end{equation}
+그러므로 $f$는 $[0,11]$에 지지되며 $0\le f(z)\le\min(z,11)$이다. 매개변수 진폭 $a$에는
+\begin{equation}\label{amp}
+ a\in C^1([-1,1]),\qquad \norm a_\infty\le a_0,\qquad
+ \norm{a'}_\infty\le a_1
+\end{equation}
+를 가정한다. 수치 사례에서는 $a_0=6/5$, $a_1=1$을 사용한다. 원문의 완전한 구성에서 실제 선택된 $a$가 다른 모든 매개변수와 동시에 이 제한을 만족하는지를 이 노트가 새로 증명하는 것은 아니다.
+
+\subsection{두 모멘트와 보정}
+$\chi$를 다음 성질의 공통 cutoff라고 하자.
+\begin{equation}\label{chi}
+0\le\chi\le1,\qquad \chi(x)=1\ (|x|\le1/2),\qquad
+\chi(x)=0\ (|x|\ge1),\qquad \chi\in C^\infty(\R).
+\end{equation}
+이 성질은 원문의 \texttt{SmoothCutoffs.cutoff}에 대해 제공된다\cite{repair,mathlib}. $s=3/20$과
+\begin{equation}\label{bump}
+b(\xi)=\chi\left(\frac{2(\e^\xi-\cosh s)}{\sinh s}\right),\quad
+ d_0=3,\ d_1=1,\quad b_j(y)=b(y-L+d_j)
+\end{equation}
+를 정의한다. 이는 원문의 양의 변수 $x=\e^y$에 놓인 두 affine bump의 이동좌표 표현이다. 두 지지집합은 서로 겹치지 않고 각각
+$[L-d_j-s,L-d_j+s]$에 포함된다.
+
+주 펄스의 두 모멘트를
+\begin{equation}\label{moments}
+ H_i=\int_0^{11/\lambda}\e^{\beta_i y}f(\lambda y)\,dy
+\end{equation}
+로 쓰고, 비음수 입력 $q_i$가 주어졌다고 하자. 보정
+\begin{equation}\label{repairdef}
+ r(y,\eta)=\sum_{j=0}^1 C_j(\eta)b_j(y)
+\end{equation}
+는 다음을 만족하도록 유일하게 정한다.
+\begin{equation}\label{debt}
+\int_0^L\e^{\beta_i y}r(y,\eta)\,dy
+=-q_i p(\eta)-a(\eta)H_i,\qquad i=0,1.
+\end{equation}
+원문이 이 모멘트 보정을 정의하는 방법도 두 bump의 모멘트 행렬을 역으로 푸는 것이다\cite{repair}. 본문에서는 배경 진폭과 묶인 두 입력에 대해
+\begin{equation}\label{prefixassumption}
+ Bq_0\le4\e^{-12}\lambda^{60},\qquad
+ Bq_1\le4\e^{-12+\lambda/2}\lambda^{60c}
+\end{equation}
+를 가정한다. 원래 이력 정의에서 이 두 상계가 나오는 유도는 부록 A에 포함한다.
+
+\subsection{검사할 스칼라 방정식}
+전체 펄스 비율과 실제 곱 변수를
+\begin{equation}
+ R=a(\eta)f(\lambda y)+r(y,\eta),\quad
+ E=B\phi(\eta)\e^{-\alpha y},\quad Y=ER,\quad X=En
+\end{equation}
+로 정의한다. 원문의 정규화 이력식 $n_y=R-\beta_0n$과 $\alpha+\beta_0=1$을 사용하면\cite{cone}
+\begin{equation}\label{Xode}
+ X_y=Y-X,\qquad X(0,\eta)=Bq_0\eta.
+\end{equation}
+각방향 이력 $Q$는
+\begin{equation}\label{Qode}
+Q_y+cQ=S_\eq+\Delta S,
+\end{equation}
+\begin{align}\label{source}
+ S_\eq&=\lambda-h+D\eta g,\\
+ \Delta S&=-\lambda\{2D\eta X+(1-\eta^2)X_\eta\}
+       +\{2h\eta+(1-\eta^2)g\}Y.\nonumber
+\end{align}
+기준 평형은 $Q_\eq=S_\eq/c$이며, 진입값에는
+\begin{equation}\label{entry}
+ \norm{Q(0,\cdot)-Q_\eq}_\infty\le e_0,
+ \qquad e_0=10\lambda^{60c}
+\end{equation}
+를 가정한다. 이는 전체 입구 구간의 양성까지 포함하는 가정은 아니다. 부록 A는 원래 대기구간에서 이 진입 오차 상계를 얻는 조건을 설명한다.
+
+\section{이동좌표 모멘트 행렬과 가중 보정 상계}
+\subsection{행렬의 정확한 인수분해}
+\begin{lemma}\label{matrixlemma}
+$M_i=\int_{-s}^{s}\e^{\beta_i\xi}b(\xi)d\xi$라고 하자. 모멘트 행렬 $A$는
+\begin{equation}\label{factor}
+ A_{ij}=\int_0^L\e^{\beta_i y}b_j(y)dy
+      =\e^{\beta_i L}M_i V_{ij},\qquad V_{ij}=\e^{-\beta_i d_j}
+\end{equation}
+이며, $0<\lambda\le1/120$에서
+\begin{equation}\label{matrixbounds}
+ M_i>\frac1{20},\qquad
+ \det V=-\e^{-2+7\lambda}(1-\e^{-2\lambda}),\qquad
+ \norm{V^{-1}}_\infty<\frac8\lambda.
+\end{equation}
+\end{lemma}
+\begin{proof}
+$\xi=y-L+d_j$로 치환하면 인수분해를 얻는다. $b=1$인 구간은
+\begin{equation}
+ \log(\cosh s-\tfrac14\sinh s)\le\xi\le
+ \log(\cosh s+\tfrac14\sinh s)
+\end{equation}
+을 포함한다. 그 길이는 $2\operatorname{artanh}(\tanh s/4)$다. $\operatorname{artanh}t\ge t$, $\tanh s\ge s/(1+s)$ 및
+$\e^{-s/2}\ge1-s/2$로부터
+\begin{equation}
+ M_i\ge(1-s/2)\frac{s}{2(1+s)}=\frac{111}{1840}>\frac1{20}.
+\end{equation}
+여기서 $\tanh s\ge s/(1+s)$는 $\e^{2s}\ge1+2s$로부터 따른다. 행렬식을 직접 전개하고
+$1-\e^{-2\lambda}\ge2\lambda\e^{-2\lambda}$를 사용하면
+$|\det V|\ge2\lambda\e^{-2}$다. $V$의 각 원소가 1 이하이므로 역행렬의 각 행합은 $\e^2/\lambda<8/\lambda$다.
+\end{proof}
+
+\begin{remark}
+인수분해는 $\e^L$을 실제로 생성하지 않아도 됨을 뜻한다. 다만 $\lambda\to0$에서 두 지수가 합쳐지므로 $V$의 조건수가 나빠질 가능성은 남는다. 본문은 이 유한한 조건수와 가중된 최종 기여의 크기를 별도로 평가한다. 원시 행렬의 큰 조건수만으로 물리적 불가능을 판단하지 않는다.
+\end{remark}
+
+\subsection{보정항의 전체 구간 상계}
+\begin{theorem}\label{repairtheorem}
+가정 \eqref{params}--\eqref{prefixassumption} 아래에서
+\begin{align}\label{Ts}
+ T_0&=4\e^{-12+\lambda/2}\lambda^{60c}\e^{-cL},\\
+ T_m&=23B\e^{-15/(2\lambda)-9}\nonumber
+\end{align}
+라고 놓으면, $Y_\rep=Er$는 $[0,L]\times[-1,1]$ 전체에서
+\begin{align}\label{Frep}
+ \norm{Y_\rep}_\infty&\le F_{0,\rep}:=\frac{800}{\lambda}(T_0+a_0T_m),\\
+ \norm{\partial_\eta Y_\rep}_\infty&\le F_{1,\rep}:=
+ \frac{800}{\lambda}\{T_0+(a_1+2a_0)T_m\}\nonumber
+\end{align}
+을 만족한다. 이 상계는 \eqref{chi}를 만족하는 공통 cutoff의 구체적인 모양과 무관하다.
+\end{theorem}
+\begin{proof}
+$\gamma_i=\alpha+\beta_i$로 두면 $\gamma_0=1$, $\gamma_1=c$다. $z_j=B\e^{-\alpha L}C_j$로 옮겨서 모멘트식을 풀면
+\begin{equation}
+ z=v^{(p)}p(\eta)+v^{(a)}a(\eta),\quad
+ v^{(p)}=-V^{-1}\left(\frac{Bq_i\e^{-\gamma_i L}}{M_i}\right)_{i=0,1},
+\end{equation}
+\begin{equation}
+ v^{(a)}=-V^{-1}\left(\frac{BH_i\e^{-\gamma_i L}}{M_i}\right)_{i=0,1}.
+\end{equation}
+두 $Bq_i\e^{-\gamma_iL}$는 \eqref{prefixassumption}로부터 $T_0$ 이하이다. 한편 $f\le11$이고 $\beta_i\ge29/60$이므로
+\begin{align}
+ BH_i\e^{-\gamma_iL}
+ &\le\frac{11B}{\beta_i}
+       \exp\left[-\frac{13\alpha+2\beta_i}{\lambda}\right]
+ \le 23B\exp\left[-\frac{15}{2\lambda}-9\right]=T_m.
+\end{align}
+보조정리 \ref{matrixlemma}에서
+$\norm{v^{(p)}}_\infty\le160T_0/\lambda$,
+$\norm{v^{(a)}}_\infty\le160T_m/\lambda$를 얻는다.
+
+지지집합에서 $y-L\ge-63/20$이므로
+\begin{equation}
+ \e^{-\alpha(y-L)}\le\exp\left(\frac{61}{120}\frac{63}{20}\right)<5.
+\end{equation}
+그리고 $\phi p=\eta$이므로
+\begin{equation}
+ Y_\rep=\e^{-\alpha(y-L)}\sum_j
+ \{v^{(p)}_j\eta+v^{(a)}_j\phi(\eta)a(\eta)\}b_j(y).
+\end{equation}
+두 bump는 겹치지 않는다. $|\eta|\le1$, $\phi\le1$, $|\phi'|\le2$를 적용하면 \eqref{Frep}가 따른다. 특히 $\phi p$를 먼저 약분해야 매개변수 미분에서도 큰 정규화 인자가 다시 생기지 않는다.
+\end{proof}
+
+\section{후반 보정을 포함한 각방향 양성}
+\subsection{초기 이력의 영향}
+\begin{lemma}\label{memory}
+\eqref{Xode}의 자유 성분 $X_0=Bq_0\eta\e^{-y}$가 \eqref{Qode}에 만드는 응답은
+\begin{equation}
+ \Delta Q_0=-Bq_0(1-2h\eta^2)(\e^{-cy}-\e^{-y}).
+\end{equation}
+따라서 전 구간에서
+\begin{equation}\label{D0}
+ |\Delta Q_0|\le D_0:=4\e^{-12}\lambda^{61}c^{c/\lambda}.
+\end{equation}
+\end{lemma}
+\begin{proof}
+소스의 자유 성분은 $-\lambda Bq_0(1-2h\eta^2)\e^{-y}$다. 이를 감쇠율 $c$의 커널로 적분하면 식을 얻는다. 양의 함수 $\e^{-cy}-\e^{-y}$의 최대점은 $-\log c/\lambda$이고 최대값은 $\lambda c^{c/\lambda}$다. \eqref{prefixassumption}과 $0\le1-2h\eta^2\le1$로부터 결론을 얻는다.
+\end{proof}
+
+\subsection{주 펄스와 전체 충분조건}
+$G_*$를 다음 가중 파형의 임의의 상계라고 하자.
+\begin{equation}\label{G}
+ \sup_{y\ge0}\e^{-\alpha y}f(\lambda y)\le G_*.
+\end{equation}
+그러면 주 펄스는 $F_{0,\sm}=Ba_0G_*$,
+$F_{1,\sm}=B(a_1+2a_0)G_*$로 상계된다. 전체 기여를
+\begin{equation}
+ F_0=F_{0,\sm}+F_{0,\rep},\qquad F_1=F_{1,\sm}+F_{1,\rep}
+\end{equation}
+로 둔다.
+
+\begin{theorem}\label{positive}
+\eqref{params}--\eqref{entry}와 \eqref{G} 아래에서 \eqref{Qode}의 해는
+\begin{equation}\label{master}
+ \boxed{Q(y,\eta)\ge\frac{\lambda-h}{c}-e_0-D_0
+ -\frac{(3+\lambda)F_0+\lambda F_1}{c}}
+\end{equation}
+를 모든 $(y,\eta)\in[0,L]\times[-1,1]$에서 만족한다. 특히 오른쪽이 양수이면 후반 보정을 포함한 전체 펄스 구간의 각방향 이력이 양수다.
+\end{theorem}
+\begin{proof}
+$X=X_0+X_f$에서 $X_f$는 $Y$를 단위 감쇠 커널로 적분한 값이다. 따라서 $\norm{X_f}\le F_0$, $\norm{(X_f)_\eta}\le F_1$이다. 가정에서
+$|2D\eta|\le1$, $|1-\eta^2|\le1$,
+$|2h\eta+(1-\eta^2)g|\le3$이므로 강제 소스의 크기는
+$(3+\lambda)F_0+\lambda F_1$ 이하이다. 이를 감쇠율 $c$의 커널로 적분하면 그 크기는 $1/c$배 이하이다. 초기 $Q$ 오차의 크기는 $e_0$, 자유 이력의 응답은 $D_0$로 제어된다. 마지막으로 $Q_\eq\ge(\lambda-h)/c$를 적용한다.
+\end{proof}
+
+\paragraph{한계의 방향.}
+\eqref{master}는 충분조건이다. 오른쪽이 음수인 매개변수에서 실제 $Q$가 음수라는 결론은 나오지 않는다. 실제 소스에는 부호, 매개변수 대칭 및 커널 적분에서의 추가 상쇄가 있을 수 있다. 또한 $Q>0$ 하나가 전체 응력 cone의 여러 부등식을 대신하지 않는다.
+
+\section{유한 사례와 산술 검산}
+\subsection{완전히 명시한 조건부 사례}
+\begin{corollary}\label{example}
+정리 \ref{positive}의 가정과
+\begin{equation}\label{exampleparams}
+ \lambda=1/1000,\quad h=1/10^8,\quad B=1,\quad
+ a_0=6/5,\quad a_1=1
+\end{equation}
+아래에서
+\begin{equation}\label{exampleconclusion}
+ Q(y,\eta)>\frac{9679}{10^7}=0.0009679
+ \quad(0\le y\le13000,\ |\eta|\le1).
+\end{equation}
+\end{corollary}
+\begin{proof}
+부록 B는 $G_*<9163/10^9$의 유리수 산술 검산을 준다. $e_0\le10^{-176}$, $D_0\le4\cdot10^{-183}$이며, \eqref{Ts}에 $\e>2$를 적용하면
+\begin{equation}
+ T_0\le\frac4{10^{177}2^{12987}},\qquad
+ T_m\le\frac{23}{2^{7500}}.
+\end{equation}
+이를 \eqref{Frep}에 대입한 보정 소스 예산은 $10^{-2000}$ 미만이다. 모든 수를 유리수로 유지해 \eqref{master}에 대입하면 \eqref{exampleconclusion}보다 큰 값을 얻는다. 제공한 \texttt{exact\_example.py}는 이 마지막 비교를 부동소수점 연산 없이 실행한다.
+\end{proof}
+
+70자리 구간산술로 같은 상계를 더 촘촘하게 평가하면 $Q$의 하계는
+$0.0009679296132728502$다. 보정 소스의 상용로그 상계는 약 $-3253.2955$이며,
+이 값은 수치해가 그 크기의 잔차를 가진다는 뜻이 아니다. 정리 \ref{repairtheorem}의 보수적인 항별 상계를 평가한 값이다. 따름정리 \ref{example}에는 이 극단적인 정밀도가 필요하지 않다.
+
+\subsection{매개변수별 충분조건}
+표 \ref{tab:limits}는 $h=\lambda/10^5$, $a_0=6/5$, $a_1=1$에서 \eqref{master}가 양수임을 보장하는 $B$의 보수적인 경계다. 표시한 값은 안전한 쪽으로 내렸다. 이는 전체 구성의 허용 매개변수 표가 아니다.
+\begin{table}[ht]
+\centering
+\caption{전체 펄스의 스칼라 양성 충분조건. $B$는 마지막 열보다 작게 택한다.}\label{tab:limits}
+\begin{tabular}{rrrr}
+\toprule
+$\lambda$ & $G_*$ 상계(표시값) & $\log_{10} F_{0,\rep}$ 상계, $B=1$ & $B$의 충분 경계\\
+\midrule
+$10^{-5}$ & $9.24220\times10^{-86}$ & $-325715.42$ & $3.0054\times10^{79}$\\
+$10^{-4}$ & $2.38345\times10^{-20}$ & $-32567.65$ & $1.1652\times10^{15}$\\
+$10^{-3}$ & $9.16283\times10^{-6}$ & $-3253.77$ & $30.2767$\\
+$0.005$ & $0.00150514$ & $-648.70$ & $0.91689$\\
+$0.008$ & $0.00332374$ & $-404.61$ & $0.66181$\\
+$1/120$ & $0.00353648$ & $-388.35$ & $0.64765$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+\centering\includegraphics[width=.88\linewidth]{../results/full_pulse_margin.png}
+\caption{\eqref{master}를 최소 평형값으로 나눈 하계. 0보다 높으면 해당 충분조건이 양성을 보장한다. 0보다 낮은 영역은 이 조건이 판정하지 못하는 영역이며 음의 실제 해를 뜻하지 않는다. 그림의 점들은 70자리 구간 계산의 하단 평가값이다. 연결선 사이의 모든 매개변수를 별도로 인증한 것은 아니다.}
+\end{figure}
+
+\section{수치 구현과 독립적인 검사}
+\subsection{큰 좌표를 생성하지 않는 계산}
+코드는 $\e^L$ 또는 원시 모멘트 $H_i$를 직접 저장하지 않는다. $H_i$의 적분에서 로그 최댓값을 빼고 적분한 뒤 로그 크기를 복구한다. 작은 행렬 $V$는 다음 식으로 푼다. $Vw=t$에서 $u_j=\e^{-\beta_0d_j}w_j$라 하면
+\begin{equation}
+ u_0=\frac{t_1-\e^\lambda t_0}{\e^\lambda\operatorname{expm1}(2\lambda)},\quad
+ u_1=t_0-u_0,\quad w_j=\e^{\beta_0d_j}u_j.
+\end{equation}
+작은 차 $\e^{2\lambda}-1$에는 \texttt{expm1}을 사용한다. 이 구현이 모든 입력에서 최적의 안정성을 가진다는 정리를 제시하지는 않는다.
+
+\subsection{원문의 선택된 cutoff와 대표 계산의 구분}
+Mathlib의 \texttt{ContDiffBump}는 \texttt{Nonempty.some}으로 선택한 기저를 사용한다\cite{mathlib}. 따라서 원문 함수가 수치 구현의 특정 식과 동일하다고 가정하지 않았다. 정리 \ref{repairtheorem}는 \eqref{chi}만으로 증명되어 원문이 보장하는 cutoff에도 적용된다. 수치 실험에서는
+$\chi_p(x)=\sigma_p(2(1-|x|))$, $p=1,2$를 대표로 택했다. 여기서 $\sigma_p$는 가장자리 $\exp(-1/x^p)$로 만든 계단이다. 두 대표의 수치 결과는 정리의 보조 검산이며 원문의 선택 객체를 추출한 결과가 아니다.
+
+\subsection{실행 결과}
+87개 자동 테스트를 실행했다. 이 수에는 이전 v0.13--v0.14의 유지된 검사와 새 모멘트 보정 검사 27개가 포함된다. 테스트의 개수는 수학적 정리의 증명이나 연구의 신규성을 대신하지 않는다.
+
+두 대표 cutoff와 여섯 $\lambda$를 조합한 12개 계산에서 스케일을 제거한 모멘트식의 최대 상대 잔차는 $1.27\times10^{-11}$ 이하였다. 작은 행렬의 해를 80자리 계산과 비교한 최대 상대 차이는 $4.23\times10^{-16}$ 이하였다. 이 후자의 비교는 \textbf{행렬을 푸는 단계}의 비교이며 모멘트 적분 전체를 80자리로 독립 검증했다는 뜻이 아니다. 따로, 하나의 대표 보정 소스에 대한 결합 ODE 해와 직접 convolution 적분도 비교했다.
+
+25개 국소 매개변수 조합 중 19개가 충분조건을 통과했다. 탈락은 실제 양성의 반례가 아니다. 전체 증명의 매개변수 해가 19개 확보되었다는 의미도 아니다. 수치 결과의 전체 행과 환경 정보는 재현 패키지에 저장했다.
+
+\section{이 결과가 말해 주는 것과 남은 문제}
+\paragraph{완료한 범위.}
+명시된 국소 입력 조건 아래에서 원문의 두 모멘트 보정을 포함한 전체 펄스의 각방향 양성 충분조건을 닫았다. 후반 보정의 최종 가중 기여는 $\exp[-15/(2\lambda)]/\lambda$를 포함하는 작은 상계로 제어된다. 따라서 이 국소 조건과 매개변수 범위에서 후반 보정의 크기 자체가 주된 제한이라고 단정할 이유는 없으며, 표의 판정 경계는 주 펄스에 대한 보수적 추정에 사실상 지배된다.
+
+\paragraph{전체 응력 조건.}
+압력과 축방향 이력, 응력 방향의 분리, 진입·전환 구간, 매칭, 고차 미분, 밴드 상호작용은 검증하지 않았다. 특히 다른 방정식에서 작은 $E$로 나누는 정규화가 등장하면, $Y_\rep=Er$가 작다는 사실만으로 그 항의 비율이 작다고 결론 내릴 수 없다.
+
+\paragraph{실제 매개변수의 동시 실현.}
+따름정리 \ref{example}는 조건부 스칼라 사례다. 예를 들어 $B$와 원래의 $P,m$은 부록 A의 진폭식으로 연결된다. 국소 식에서 $B=1$을 택할 수 있다는 사실과 원문의 모든 보수적 입구 조건을 동시에 만족한다는 사실은 별개다. 원래의 큰 $m$ 선택과 $P$ 하계까지 강제하면 이 시험점이 남는지 추가 검사가 필요하다.
+
+\paragraph{물리적 예측.}
+이 노트에는 실제 외력의 크기·대역폭 제한, CFD 격자 수렴 또는 실험 자료가 없다. 공동현상·압축성·유변학 중 무엇이 현실에서 먼저 개입하는지, 로봇·배터리 기술에 어떤 효과가 있는지, 사업화 가치가 있는지를 여기서 판단할 수 없다. 물리적 후속 연구에는 전체 유동장과 구동 가능한 입력, 모형 차이 및 측정이 필요하다.
+
+\paragraph{투고 전 점검.}
+원문 작성자 또는 관련 분석·수치해석 연구자의 독립 검토, 기존 추정 대비 개선의 신규성 확인, 전체 cone에 대한 유용한 연결 중 적어도 하나를 추가하는 것이 필요하다. 현재 원고는 주장과 증명이 명시된 \textbf{검토 가능한 국소 기술 노트}이며, 학술지에 바로 제출해도 된다는 평가를 받은 원고는 아니다.
+
+\appendix
+\section{진폭과 두 이력 곱의 원래 정의에서의 유도}
+$K=\e^m$, $H=K+12$, $w=60\log(1/\lambda)$, $m>0$로 둔다. 원래 경사는
+\begin{equation}
+ s(y)=\tfrac35(1-\sigma(y))-\lambda\sigma(y-K-11).
+\end{equation}
+$\sigma(x)+\sigma(1-x)=1$을 적분하면 $\int_0^1\sigma=1/2$다. 따라서 원래 반경 진폭 $A(y)=P\exp\int_0^y(s-1/2)$의 펄스 진입값은 정확히
+\begin{equation}\label{Bexact}
+ B=P\exp(3/10-\lambda/2-H/2)\lambda^{30+60\lambda}.
+\end{equation}
+축방향 drop $k$는 $0\le k\le4$, $y\ge K$에서 0이며,
+\begin{align}
+ M_0&=4+\int_0^K\e^yk(y)dy\le4\e^K,\\
+ J_0&=\tfrac52\sqrt2P+\int_0^K\sqrt2\e^{3y/2}A(y)k(y)dy
+      \le4\sqrt2P\e^{3/10+K}.
+\end{align}
+$y_b=H+w$와
+$q_0=M_0/(\e^{y_b}B)$,
+$q_1=J_0/(\sqrt2\e^{3y_b/2}B^2)$를 사용하면 \eqref{prefixassumption}가 따른다. 큰 $P,m$이 없어지는 것은 이 두 \textbf{곱의 상계}이며 모든 프로필의 크기에서 사라지는 것은 아니다.
+
+진입 각방향 오차는 대기구간의 식에서 얻을 수 있다. $\bar k_H\le4\e^{-12}$이고 $|Q_H|\le8$인 원래 입구 이력의 상계를 사용하면
+\begin{equation}
+ Q_b-Q_\eq=(Q_H-Q_\eq)\e^{-cw}
+ -(1-2h\eta^2)\bar k_H(\e^{-cw}-\e^{-w}).
+\end{equation}
+$0<Q_\eq<1$이므로 \eqref{entry}가 따른다. $|Q_H|\le8$은 원래 입구의 소스 크기 $6.39$ 이하, 감쇠율 $0.9$ 이상 및 이상적 진입값 크기 4 이하에서 비교원리로 얻는 충분한 상계다. 이 계산은 입구 이력의 부호까지 주장하지 않는다.
+
+\section{가중 주 펄스 상계와 유리수 검산}
+$z\le1/100$에서
+\begin{equation}
+ \sigma(50z)\le\exp\left(4-\frac1{2500z^2}\right),\qquad
+ \int_0^z\sigma(50t)dt\le1250z^3\exp\left(4-\frac1{2500z^2}\right).
+\end{equation}
+첫 부등식은 $1/(1-50z)^2\le4$로부터 나온다. 두 번째는 우변을 미분하면 해당 지수 함수보다 크다는 사실로 확인한다. $z=1/100$에서는 적분 상계가 $1/800$이다. 이후에는 $\sigma\le1$을 사용하여 ramp를 $z-7/800$으로 상계한다.
+
+$y_0=1/(100\lambda)$로 두면 첫 구간에서 최대화할 상계는
+\begin{equation}
+1250(\lambda y)^3\exp\left(4-\alpha y-\frac1{2500\lambda^2 y^2}\right)
+\end{equation}
+이다. 내부 최대점은 다음 방정식의 양의 근이다.
+\begin{equation}
+\alpha y^3-3y^2-2/(2500\lambda^2)=0.
+\end{equation}
+둘째 구간의 최대점은 $\max(y_0,7/(800\lambda)+1/\alpha)$이다.
+
+$\lambda=1/1000$에서는 첫 구간의 최대가 $y_0=10$에서 얻어지고, 두 구간 상계는 각각
+\begin{equation}
+ \frac1{800}\e^{-501/100},\qquad
+ \frac{2}{1002}\e^{-4307/800}
+\end{equation}
+이다. 양의 $x$에 대해 $S_N(x)=\sum_{k=0}^N x^k/k!<\e^x$를 사용하면
+각 지수 감쇠를 $1/S_{64}(x)$로 상계할 수 있다. 유리수 비교로 두 값 모두
+$9163/10^9$ 미만임을 확인했다.
+
+$\e^2<8$과 $\exp(3843/2400)<5$의 확인에는 Taylor 나머지 상계
+\begin{equation}
+ \e^x\le S_N(x)+\frac{x^{N+1}}{(N+1)!}\frac1{1-x/(N+2)},\quad 0\le x<N+2
+\end{equation}
+를 썼다. 각 항의 비가 $x/(N+2)$ 이하임을 이용한 등비급수 상계다. 모든 비교는 파이썬의 유리수 자료형으로 실행되며, 로그 반경 전체에 대한 일반적인 해석적 증명과 마지막 수치 부등식 검산을 결합한 것이다. 이 검산을 Lean 커널 증명이라고 부르지는 않는다.
+
+\section{재현 방법과 출처 추적}
+압축파일을 푼 뒤 다음을 실행한다.
+\begin{verbatim}
+python -m pip install -r requirements.txt
+cd code
+python repair_budget.py --out ../results
+python exact_example.py
+python -m pytest -q
+\end{verbatim}
+실행 환경은 Python 3.13.5, NumPy 2.3.5, SciPy 1.17.0, mpmath 1.3.0이다. 독립 행렬 해 비교는 mpmath 80자리, 스칼라 상계 평가는 구간산술 70자리를 사용했다. 현재 패키지의 CSV·JSON·테스트 로그는 실제 이번 실행에서 생성했다. 그래프 재생성 코드는 \texttt{make\_figure.py}에 포함했다.
+
+출처 명세 파일은 사용한 커밋, 파일, 정의 및 읽은 범위를 기록한다. 별도의 주장 점검표는 결과의 범위를 분리한다. 해시 목록은 배포한 파일의 내용을 확인하는 데 사용한다. AI 도구가 유도·구현·초안 작성에 사용되었으며, 독립적인 인간 공동연구자 검토나 형식 검증을 수행했다고 기재하지 않았다.
+
+\begin{thebibliography}{9}\small
+\bibitem{announcement} OpenAI. \emph{An OpenAI model proposes a solution to the Navier--Stokes problem}. 연구 색인, 2026-09-08. \href{https://openai.com/ko-KR/research/index/publication/}{공식 색인}. 확인: 2026-09-09.
+\bibitem{schedule} OpenAI. \emph{NavierStokesAndEuler}, 커밋 \texttt{8937a8f4cbc7abaab5e9e97d1cc7f5d2319d9538}. \texttt{OutgoingSchedule.lean}, \texttt{OutgoingPulseBounds.lean}, \texttt{OutgoingEntranceCone.lean}. \href{https://github.com/openai/NavierStokesAndEuler/tree/8937a8f4cbc7abaab5e9e97d1cc7f5d2319d9538}{고정된 저장소}.
+\bibitem{repair} OpenAI. 같은 커밋의 \texttt{LocalizedMomentRepair.lean}, \texttt{SmoothCutoffs.lean}. 정의 \texttt{bump}, \texttt{matrix}, \texttt{coefficients}, \texttt{repair}; cutoff의 범위·지지집합·평탄 구간 성질.
+\bibitem{cone} OpenAI. 같은 커밋의 \texttt{PulseLag.lean}, \texttt{PulseCone.lean}. 정의 \texttt{decay}, \texttt{pulseAngularSource}, 정리 \texttt{Ubar\_pulse}, \texttt{Qs\_pulse\_hasDerivAt}.
+\bibitem{mathlib} Mathlib community. Mathlib 4, 태그 \texttt{v4.34.0-rc2}. \texttt{Analysis/Calculus/BumpFunction/Basic.lean}, \texttt{InnerProduct.lean}, \texttt{Analysis/SpecialFunctions/SmoothTransition.lean}. \href{https://github.com/leanprover-community/mathlib4/tree/v4.34.0-rc2}{태그가 고정된 저장소}.
+\bibitem{higham} N.~J. Higham. Error analysis of the Björck--Pereyra algorithms for solving Vandermonde systems. \emph{Numerische Mathematik} 50(5), 613--632, 1987. DOI: \href{https://doi.org/10.1007/BF01408579}{10.1007/BF01408579}.
+\bibitem{lessard} J.-P. Lessard and J.~D. Mireles James. Computer Assisted Fourier Analysis in Sequence Spaces of Varying Regularity. \emph{SIAM Journal on Mathematical Analysis} 49(1), 530--561, 2017. DOI: \href{https://doi.org/10.1137/16M1056006}{10.1137/16M1056006}.
+\end{thebibliography}
+\end{document}
